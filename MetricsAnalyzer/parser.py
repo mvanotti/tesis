@@ -1,12 +1,14 @@
 from sys import stdin
 import json
 
+
 def parseMessageBytes(metric):
     return {
         "event": metric[1],
         "bytes": metric[3],
         "sender": metric[5],
     }
+
 
 def parseNewBlock(metric):
     return {
@@ -16,6 +18,7 @@ def parseNewBlock(metric):
         "parent": metric[7],
         "sender": metric[9],
     }
+
 
 def parseNewTransaction(metric):
     return {
@@ -34,12 +37,14 @@ def parseBroadcastBlock(metric):
         "parent": metric[7],
     }
 
+
 def parseBroadcastTransaction(metric):
     return {
         "event": metric[1],
         "hash": metric[3],
         "nonce": int(metric[5]),
     }
+
 
 def parseNewBlockHash(metric):
     return {
@@ -48,6 +53,7 @@ def parseNewBlockHash(metric):
         "number": int(metric[5]),
         "sender": metric[7],
     }
+
 
 def parseNewBlockHeader(metric):
     return {
@@ -58,6 +64,7 @@ def parseNewBlockHeader(metric):
         "sender": metric[9],
     }
 
+
 def parseEventWithHash(metric):
     return {
         "nodeID": metric[4],
@@ -66,6 +73,7 @@ def parseEventWithHash(metric):
         "timestamp": int(metric[9]),
         "nano": int(metric[11])
     }
+
 
 metricsParser = {
     "messageBytes": parseMessageBytes,
@@ -77,8 +85,10 @@ metricsParser = {
     "newBlockHash": parseNewBlockHash,
 }
 
+
 def linearize(metrics):
     return sorted(metrics, key=lambda m: int(m["timestamp"]))
+
 
 def blockPropagation(metrics):
     blocks = {}
@@ -90,7 +100,7 @@ def blockPropagation(metrics):
 
     propagationTimes = {}
     for hash, ls in blocks.iteritems():
-        visited = set([]) # Only count the first time a node receives a block.
+        visited = set([])  # Only count the first time a node receives a block.
         startTime = ls[0]["timestamp"]
 
         # times is a list of (elapsedTime, node).
@@ -106,6 +116,7 @@ def blockPropagation(metrics):
 
         propagationTimes[hash] = times
     return propagationTimes
+
 
 def txPropagation(metrics):
     blocks = {}
@@ -117,7 +128,7 @@ def txPropagation(metrics):
 
     propagationTimes = {}
     for hash, ls in blocks.iteritems():
-        visited = set([]) # Only count the first time a node receives a block.
+        visited = set([])  # Only count the first time a node receives a block.
         startTime = ls[0]["timestamp"]
 
         # times is a list of (elapsedTime, node).
@@ -133,6 +144,7 @@ def txPropagation(metrics):
 
         propagationTimes[hash] = times
     return propagationTimes
+
 
 def getBandwithUsage(metrics):
     return 0
@@ -155,6 +167,10 @@ def parseMetric(line):
     metric["nano"] = int(nano)
     return metric
 
+
+"""Usage: send the metrics logs via stdin and this will do the rest."""
+
+
 def main():
     metrics = []
     nodes = set([])
@@ -164,19 +180,17 @@ def main():
         metrics.append(metric)
 
     metrics = linearize(metrics)
-    print "var nodes = ", json.dumps(list(nodes)), ";"
-    print "var data = ", json.dumps(metrics), ";"
-    propTimes = blockPropagation(metrics)
-    #for hash, times in propTimes.iteritems():
-        #print "Block %s propagated in %d" % (hash, times[-1][0])
+    # print "var nodes = ", json.dumps(list(nodes)), ";"
+    # print "var data = ", json.dumps(metrics), ";"
+    # propTimes = blockPropagation(metrics)
+    # for hash, times in propTimes.iteritems():
+    # print "Block %s propagated in %d" % (hash, times[-1][0])
 
-    txTimes = txPropagation(metrics)
-    #for hash, times in txTimes.iteritems():
-        #print "Tx %s propagated in %d" % (hash, times[-1][0])
+    # txTimes = txPropagation(metrics)
+    # for hash, times in txTimes.iteritems():
+    # print "Tx %s propagated in %d" % (hash, times[-1][0])
 
-    bwInfo = getBandwithUsage(metrics)
-
-
+    # bwInfo = getBandwithUsage(metrics)
 
 
 if __name__ == "__main__":
