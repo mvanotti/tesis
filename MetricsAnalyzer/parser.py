@@ -1,5 +1,10 @@
 from sys import stdin
+from itertools import groupby
+from statistics import mean, median, stdev, variance
 import json
+import time
+
+current_milli_time = lambda: int(round(time.time() * 1000))
 
 
 def parseMessageBytes(metric):
@@ -167,19 +172,60 @@ def parseMetric(line):
     metric["nano"] = int(nano)
     return metric
 
+def calculateTimeDifferences(host_metrics):
+    """ calculateTimeDifferences will print the statistics about the time differences for the metrics for this host.
+        It calculates the difference in wall-clock time from one metric to the next, and the difference in app time,
+        and get the absolute value of the difference. This value would be the time drift that happened
+        because NTP synchronization. """
+    deltas = []
+    print("Host: %s" % host_metrics[0]["nodeID"])
+    for i in range(len(host_metrics) - 1):
+        deltaTimeMillis = host_metrics[i+1]["timestamp"] - host_metrics[i]["timestamp"]
+        deltaTimeNanos  = host_metrics[i+1]["nano"] - host_metrics[i]["nano"]
 
-"""Usage: send the metrics logs via stdin and this will do the rest."""
+        deltasDifference = abs(deltaTimeMillis - deltaTimeNanos/1000000.0)
+        if deltasDifference > 100000:
+           print(deltasDifference, host_metrics[i], host_metrics[i+1])
+        deltas.append(deltasDifference)
+    if len(deltas) < 2:
+        print("No Data")
+        return
 
+    print("Metrics: %d, Mean: %.4f, Median: %.4f, Max: %.4f, Std: %.4f, Variance: %.4f" %
+          (len(deltas), mean(deltas), median(deltas), max(deltas), stdev(deltas), variance(deltas)))
+
+
+def calculateTimeDifferencesAllHosts(metrics):
+    """calculateTimeDifferencesAllHosts will estimate the time-drifting for each host in the network. """
+    hostsMetrics = metricsByHost(metrics)
+
+    for h in sorted(hostsMetrics.keys()):
+        calculateTimeDifferences(hostsMetrics[h])
+    return None
+
+def metricsByHost(metrics):
+    """metricsByHost will split the metrics for each different host. """
+    hostfunc = lambda x: x["nodeID"]
+    res = {}
+    for m in metrics:
+        k = m["nodeID"]
+        if k not in res:
+            res[k] = []
+        res[k].append(m)
+
+    return res
 
 def main():
+    """Usage: python parser.py < logfile """
     metrics = []
     nodes = set([])
     for line in stdin:
         metric = parseMetric(line)
-        if metric == None: continue
+        if metric is None: continue
         metrics.append(metric)
 
     metrics = linearize(metrics)
+    #calculateTimeDifferencesAllHosts(metrics)
     # print "var nodes = ", json.dumps(list(nodes)), ";"
     # print "var data = ", json.dumps(metrics), ";"
     # propTimes = blockPropagation(metrics)
