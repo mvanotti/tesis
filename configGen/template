@@ -1,0 +1,136 @@
+blockchain.config.name = "regtest"
+
+peer.discovery = {
+    enabled = false
+    bind.ip = {{ .N.Ip }}
+    external.ip = {{ .N.Ip }}
+}
+
+peer {
+    active = [ {{ $nodes := .Nodes }} {{ range $i, $v := .N.Peers }} {{ $node := index $nodes $v }} {{ $n := len $nodes}}
+	{{if $i }},{{end}}{ 
+	  ip = {{ $node.Ip}}
+	  port = {{ $node.Port }}
+	  nodeId = {{ $node.Id.NodeID }}
+	}{{ end }}]
+
+    # currently only protocol supported is RSK
+    capabilities = [rsk]
+
+    bind.ip = {{ .N.Ip }}
+
+    # Peer for server to listen for incoming
+    # connections
+    listen.port = {{ .N.Port }}
+
+    connection.timeout = 2
+    channel.read.timeout = 30
+
+    privateKey = {{ .N.Id.PrivateKey }}
+
+    networkId = 456124
+    p2p {
+        # version = 4
+        framing.maxSize = 32768
+        eip8 = true
+    }
+    maxAcivePeers = 30
+}
+genesis = rootstock-dev.json
+transaction.approve.timeout = 15
+transaction.outdated.threshold = 10
+
+# default directory where we keep
+# basic Serpent samples relative
+# to home.dir
+samples.dir = samples
+
+database {
+    dir = {{ .Name }}
+    reset = true
+}
+
+# this string is computed
+# to be eventually the address
+# that get the miner reward
+coinbase.secret = monkey1
+
+dump {
+    full = false
+    dir = dmp
+    block = -1
+    style = pretty
+    clean.on.restart = true
+}
+
+vm.structured {
+    trace = false
+    dir = vmtrace
+    compressed = true
+    initStorageLimit = 10000
+
+    # enables storage disctionary db recording
+    # see the org.ehereum.db.StorageDisctionary class for details
+    storage.dictionary.enabled = false
+}
+trace.startblock = -1
+play.vm = false
+hello.phrase = Dev
+root.hash.start = null
+keyvalue.datasource = leveldb
+redis.enabled=false
+record.blocks=false
+blockchain.only=false
+blocks.loader=""
+details.inmemory.storage.limit=1000
+cache {
+    flush {
+        # [0.7 = 70% memory to flush]
+        memory = 0
+        # [10000 flush each 10000 blocks]
+        blocks = 1
+    }
+}
+# eth sync process
+sync {
+    enabled = true
+    max.hashes.ask = 10000
+    max.blocks.ask = 100
+    peer.count = 10
+    waitForSync = false
+    exitOnBlockConflict = true
+}
+# miner options
+miner {
+    server.enabled = {{ .N.Minerserver }}
+    client.enabled = {{ .N.Minerclient}}
+    minGasPrice = 0
+    # these are values used by MinerServer to set the notify flag on/off
+    gasUnitInDollars = 0.001
+    minFeesNotifyInDollars = 30
+}
+simulateTxs {
+    enabled = false
+}
+federator {
+    enabled = false
+}
+rpc {
+    enabled = false
+}
+wallet {
+    accounts = [
+        {
+            privateKey = {{ .N.Id.PrivateKey }}
+            publicKey = {{ .N.Id.PublicKey }}
+            address = {{ .N.Id.Address }}
+        }
+    ]
+}
+blocks {
+    enabled: false
+    recorder: "blocksminer1.txt"
+}
+wire {
+    protocol: "rsk"
+}
