@@ -68,9 +68,18 @@ func saveConfigs(nodes []node, path string) {
 func saveConfig(n int, nodes []node, path string, tmplt *template.Template) {
 	w, err := os.Create(path)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to create config file: %+v", err)
 	}
 
+	peers := nodes[n].Peers
+	nodes[n].Peers = []int{}
+	for _, v := range peers {
+		if v < n {
+			nodes[n].Peers = append(nodes[n].Peers, v)
+		}
+	}
+
+	fmt.Printf("%+v", nodes[n].Peers)
 	d := struct {
 		Name  string
 		N     node
