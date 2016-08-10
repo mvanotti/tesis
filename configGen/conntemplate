@@ -1,0 +1,10 @@
+digraph G {
+{{ $nodes := .Nodes }}
+{
+	node [ style=filled ]
+	{{ range $i, $v := .Nodes }}{{ if $v.Minerclient }}"10.0.0.{{$i}}" [fillcolor=cyan] {{ end }}
+	{{ end }}
+}
+{{ range $i, $v := .Nodes }}{{ $node := index $nodes $i }}{{ range $j, $w := $node.Peers }}"10.0.0.{{$i}}" -> "10.0.0.{{$w}}"
+{{ end }}{{ end }}
+}

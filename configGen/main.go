@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+	"time"
 )
 
 type nodeID struct {
@@ -41,6 +42,7 @@ type node struct {
 
 func main() {
 	flag.Parse()
+	rand.Seed(time.Now().UnixNano())
 
 	nodeIDs := parseNodeIDs(*nodesFolder, *maxNodes)
 	nodeIPs := genNodeIPs(*maxNodes)
@@ -50,7 +52,40 @@ func main() {
 	addMiners(nodes, *cantMiners)
 	addPeers(nodes, *minPeers, *maxPeers)
 
+	keepOneWayPeers(nodes)
+
 	saveConfigs(nodes, *configFolder)
+	saveConnectivityGraph(nodes, filepath.Join(*configFolder, "connectivity.dot"))
+}
+
+func keepOneWayPeers(nodes []node) {
+	for i, _ := range nodes {
+		peers := nodes[i].Peers
+		nodes[i].Peers = []int{}
+		for _, v := range peers {
+			if v < i {
+				nodes[i].Peers = append(nodes[i].Peers, v)
+			}
+		}
+	}
+}
+
+func saveConnectivityGraph(nodes []node, path string) {
+	w, err := os.Create(path)
+	if err != nil {
+		log.Fatalf("failed to create config file: %+v", err)
+	}
+	tmpltData, err := ioutil.ReadFile("conntemplate")
+	if err != nil {
+		log.Fatal(err)
+	}
+	var tmplt = template.Must(template.New("conn").Parse(string(tmpltData)))
+	d := struct {
+		Nodes []node
+	}{nodes}
+	if err := tmplt.Execute(w, d); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func saveConfigs(nodes []node, path string) {
@@ -71,15 +106,6 @@ func saveConfig(n int, nodes []node, path string, tmplt *template.Template) {
 		log.Fatalf("failed to create config file: %+v", err)
 	}
 
-	peers := nodes[n].Peers
-	nodes[n].Peers = []int{}
-	for _, v := range peers {
-		if v < n {
-			nodes[n].Peers = append(nodes[n].Peers, v)
-		}
-	}
-
-	fmt.Printf("%+v", nodes[n].Peers)
 	d := struct {
 		Name  string
 		N     node
