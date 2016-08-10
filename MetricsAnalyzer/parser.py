@@ -1,11 +1,12 @@
 from sys import stdin
-from itertools import groupby
 from statistics import mean, median, stdev, variance
-import json
+import numpy as np
+import matplotlib.mlab as mlab
+import matplotlib.pyplot as plt
 import time
 
-current_milli_time = lambda: int(round(time.time() * 1000))
-
+def current_milli_time():
+    return int(round(time.time() * 1000))
 
 def parseMessageBytes(metric):
     return {
@@ -95,7 +96,7 @@ def linearize(metrics):
     return sorted(metrics, key=lambda m: int(m["timestamp"]))
 
 
-def blockPropagation(metrics):
+def block_propagation(metrics):
     blocks = {}
     for m in filter(lambda m: m["event"] in ["broadcastBlock", "newBlock"], metrics):
         hash = m["hash"]
@@ -103,52 +104,60 @@ def blockPropagation(metrics):
             blocks[hash] = []
         blocks[hash].append(m)
 
-    propagationTimes = {}
-    for hash, ls in blocks.iteritems():
+    propagation_times = {}
+    for hash, ls in blocks.items():
         visited = set([])  # Only count the first time a node receives a block.
-        startTime = ls[0]["timestamp"]
+        start_time = ls[0]["timestamp"]
+        if ls[0]["event"] != "broadcastBlock":
+            print("Block with hash %s received appeared out of order!" % ls[0]["hash"])
+            continue
 
         # times is a list of (elapsedTime, node).
         # for each node, how long did it take to receive the block.
-        times = []
+        times = [(0, ls[0]["nodeID"])]
+        ls = [m for m in ls if m["event"] == "newBlock"]
         for m in ls:
             node = m["nodeID"]
             if node in visited: continue
             visited.add(node)
 
-            elapsed = m["timestamp"] - startTime
+            elapsed = m["timestamp"] - start_time
             times.append((elapsed, node))
 
-        propagationTimes[hash] = times
-    return propagationTimes
+        propagation_times[(hash,start_time)] = times
+    return propagation_times
 
 
-def txPropagation(metrics):
-    blocks = {}
+def transaction_propagation(metrics):
+    txs = {}
     for m in filter(lambda m: m["event"] in ["broadcastTransaction", "newTransaction"], metrics):
         hash = m["hash"]
-        if hash not in blocks:
-            blocks[hash] = []
-        blocks[hash].append(m)
+        if hash not in txs:
+            txs[hash] = []
+        txs[hash].append(m)
 
-    propagationTimes = {}
-    for hash, ls in blocks.iteritems():
-        visited = set([])  # Only count the first time a node receives a block.
-        startTime = ls[0]["timestamp"]
+    propagation_times = {}
+    for hash, ls in txs.items():
+        visited = set([])  # Only count the first time a node receives a tx.
+        start_time = ls[0]["timestamp"]
+        if ls[0]["event"] != "broadcastTransaction":
+            print("Transaction with hash %s received appeared out of order!" % ls[0]["hash"])
+            continue
 
         # times is a list of (elapsedTime, node).
         # for each node, how long did it take to receive the block.
-        times = []
+        times = [(0, ls[0]["nodeID"])]
+        ls = [m for m in ls if m["event"] == "newTransaction"]
         for m in ls:
             node = m["nodeID"]
             if node in visited: continue
             visited.add(node)
 
-            elapsed = m["timestamp"] - startTime
+            elapsed = m["timestamp"] - start_time
             times.append((elapsed, node))
 
-        propagationTimes[hash] = times
-    return propagationTimes
+        propagation_times[(hash, start_time)] = times
+    return propagation_times
 
 
 def getBandwithUsage(metrics):
@@ -215,6 +224,49 @@ def metricsByHost(metrics):
 
     return res
 
+def propagation_statistics(nodes, prop_times):
+    unreceived = []
+    percentages = {10:[], 50:[], 90:[], 100:[]}
+    indexes = [ min(int(x * nodes / 100.0), nodes - 1) for x in sorted(percentages.keys())]
+    for hash, times in prop_times.items():
+        if len(times) < nodes:
+            #print(hash, len(times))
+            unreceived.append(hash)
+            continue
+        proptimes = [times[i][0] for i in indexes]
+        percentages[10].append(proptimes[0])
+        percentages[50].append(proptimes[1])
+        percentages[90].append(proptimes[2])
+        percentages[100].append(proptimes[3])
+
+    return percentages, unreceived
+
+def block_propagation_histogram(prop_times):
+    data = []
+    for h, times in prop_times.items():
+        data += [min(t[0]/1000.0, 10.0) for t in times]
+
+    # the histogram of the data
+        bins = [x/2 for x in range(0, 21)]
+    print(bins)
+    n, bins, patches = plt.hist(data, bins=bins, facecolor='g', alpha=0.75, weights=100*(np.zeros_like(data) + 1. / len(data)), cumulative=True)
+
+    plt.xlabel('Seconds')
+    plt.ylabel('cumulative % of Blocks Received')
+    plt.title('Histogram of Block Propagation Times (cumulative)')
+    plt.grid(True)
+    plt.savefig(filename="/tmp/cumulative.png")
+    plt.clf()
+    n, bins, patches = plt.hist(data, bins=bins, facecolor='g', alpha=0.75, weights=100*(np.zeros_like(data) + 1. / len(data)), cumulative=False)
+    plt.xlabel('Seconds')
+    plt.ylabel('% of Blocks Received')
+    plt.title('Histogram of Block Propagation Times')
+    plt.grid(True)
+    plt.savefig(filename="/tmp/noncumulative.png")
+    plt.clf()
+
+
+
 def main():
     """Usage: python parser.py < logfile """
     metrics = []
@@ -223,19 +275,40 @@ def main():
         metric = parseMetric(line)
         if metric is None: continue
         metrics.append(metric)
-
+        nodes.add(metric["nodeID"])
     metrics = linearize(metrics)
     #calculateTimeDifferencesAllHosts(metrics)
     # print "var nodes = ", json.dumps(list(nodes)), ";"
     # print "var data = ", json.dumps(metrics), ";"
-    # propTimes = blockPropagation(metrics)
-    # for hash, times in propTimes.iteritems():
-    # print "Block %s propagated in %d" % (hash, times[-1][0])
 
-    # txTimes = txPropagation(metrics)
-    # for hash, times in txTimes.iteritems():
-    # print "Tx %s propagated in %d" % (hash, times[-1][0])
+    block_prop_times = block_propagation(metrics)
+    block_stats, unreceived = propagation_statistics(len(nodes), block_prop_times)
+    print("Blocks not received by everyone: %d/%d" % (len(unreceived), len(block_prop_times)))
+    for k in unreceived[20:30]:
+        print(k, len(block_prop_times[k]))
 
+    for p in sorted(block_stats.keys()):
+        vals = block_stats[p]
+        print("Blocks propagated to %d%% of nodes in:" % p)
+        print("mean: %d, median: %d, max: %d, min: %d, stddev: %d, variance: %d" %
+              (mean(vals), median(vals), max(vals), min(vals), stdev(vals), variance(vals)))
+
+    block_propagation_histogram(block_prop_times)
+
+
+    tx_prop_times = transaction_propagation(metrics)
+    tx_stats, unreceived = propagation_statistics(len(nodes), tx_prop_times)
+    print("Txs not received by everyone: %d/%d" % (len(unreceived), len(tx_prop_times)))
+
+    print(unreceived[4])
+
+    for p in sorted(tx_stats.keys()):
+        vals = tx_stats[p]
+        print("Txs propagated to %d%% of nodes in:" % p)
+        print("mean: %d, median: %d, max: %d, min: %d, stddev: %d, variance: %d" %
+              (mean(vals), median(vals), max(vals), min(vals), stdev(vals), variance(vals)))
+
+    # block_propagation_histogram(tx_prop_times)
     # bwInfo = getBandwithUsage(metrics)
 
 
