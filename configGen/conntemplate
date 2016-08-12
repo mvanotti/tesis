@@ -2,9 +2,9 @@ digraph G {
 {{ $nodes := .Nodes }}
 {
 	node [ style=filled ]
-	{{ range $i, $v := .Nodes }}{{ if $v.Minerclient }}"10.0.0.{{$i}}" [fillcolor=cyan] {{ end }}
+	{{ range $i, $v := .Nodes }}{{ if $v.Minerclient }}"{{ $v.Ip }}" [fillcolor=cyan] {{ end }}
 	{{ end }}
 }
-{{ range $i, $v := .Nodes }}{{ $node := index $nodes $i }}{{ range $j, $w := $node.Peers }}"10.0.0.{{$i}}" -> "10.0.0.{{$w}}"
+{{ range $i, $v := .Nodes }}{{ $node := index $nodes $i }}{{ range $j, $w := $node.Peers }} {{ $other := index $nodes $w }} "{{ $v.Ip }}" -> "{{ $other.Ip }}"
 {{ end }}{{ end }}
 }
