@@ -26,6 +26,7 @@ var (
 	maxNodes     = flag.Int("n", 20, "Maximum Amount of Nodes")
 	nodesFolder  = flag.String("ndir", "nodeids", "Folder in which to find all the json files with the nodes description")
 	cantMiners   = flag.Int("m", 5, "Miners amount")
+	cantTxSim    = flag.Int("txs", 0, "Nodes that will simulate txs")
 	minPeers     = flag.Int("minP", 3, "Minimum amount of peers")
 	maxPeers     = flag.Int("maxP", 9, "Maximum amount of peers")
 	configFolder = flag.String("cdir", "configs", "Folder in which to store all the generated configuration files")
@@ -36,6 +37,7 @@ type node struct {
 	Port        string
 	Minerclient bool
 	Minerserver bool
+	SimulateTxs bool
 	Id          nodeID
 	Peers       []int
 }
@@ -50,6 +52,7 @@ func main() {
 	nodes := getNodes(nodeIDs, nodeIPs)
 
 	addMiners(nodes, *cantMiners)
+	addTxSims(nodes, *cantTxSim)
 	addPeers(nodes, *minPeers, *maxPeers)
 
 	keepOneWayPeers(nodes)
@@ -113,6 +116,18 @@ func saveConfig(n int, nodes []node, path string, tmplt *template.Template) {
 	}{N: nodes[n], Nodes: nodes, Name: fmt.Sprintf("node%d", n+1)}
 	if err := tmplt.Execute(w, d); err != nil {
 		log.Fatal(err)
+	}
+}
+
+// addTxSims sets "SimulateTxs" of the given nodes as miners.
+func addTxSims(nodes []node, simulators int) {
+	for i := 0; i < simulators; i++ {
+		k := rand.Intn(len(nodes))
+		for nodes[k].SimulateTxs {
+			k = rand.Intn(len(nodes))
+		}
+
+		nodes[k].SimulateTxs = true
 	}
 }
 

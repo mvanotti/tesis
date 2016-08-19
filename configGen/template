@@ -103,14 +103,14 @@ sync {
 # miner options
 miner {
     server.enabled = {{ .N.Minerserver }}
-    client.enabled = {{ .N.Minerclient}}
+    client.enabled = {{ .N.Minerclient }}
     minGasPrice = 0
     # these are values used by MinerServer to set the notify flag on/off
     gasUnitInDollars = 0.001
     minFeesNotifyInDollars = 30
 }
 simulateTxs {
-    enabled = false
+    enabled = {{ .N.SimulateTxs }}
 }
 federator {
     enabled = false
