@@ -95,10 +95,13 @@ metricsParser = {
 def linearize(metrics):
     return sorted(metrics, key=lambda m: int(m["timestamp"]))
 
-
 def block_propagation(metrics):
+    # Discard blocks from the beggining and end of the experiment.
+    cutoff_time_end = metrics[-1]["timestamp"] - 60*1000*5
+    cutoff_time_begin = metrics[0]["timestamp"] + 60*1000*5
+
     blocks = {}
-    for m in filter(lambda m: m["event"] in ["broadcastBlock", "newBlock"], metrics):
+    for m in [m for m in metrics if m["event"] in ["broadcastBlock", "newBlock"]]:
         hash = m["hash"]
         if hash not in blocks:
             blocks[hash] = []
@@ -108,6 +111,7 @@ def block_propagation(metrics):
     for hash, ls in blocks.items():
         visited = set([])  # Only count the first time a node receives a block.
         start_time = ls[0]["timestamp"]
+        if not (cutoff_time_begin < start_time < cutoff_time_end): continue
         if ls[0]["event"] != "broadcastBlock":
             print("Block with hash %s received appeared out of order!" % ls[0]["hash"])
             continue
@@ -247,7 +251,7 @@ def block_propagation_histogram(prop_times):
         data += [min(t[0]/1000.0, 10.0) for t in times]
 
     # the histogram of the data
-        bins = [x/2 for x in range(0, 21)]
+        bins = [x/4.0 for x in range(0, 41)]
     print(bins)
     n, bins, patches = plt.hist(data, bins=bins, facecolor='g', alpha=0.75, weights=100*(np.zeros_like(data) + 1. / len(data)), cumulative=True)
 
@@ -265,7 +269,36 @@ def block_propagation_histogram(prop_times):
     plt.savefig(filename="/tmp/noncumulative.png")
     plt.clf()
 
+def block_generation_graph(metrics):
+    """ Generates a graph displaying how much time did each block (by number) took to appear on the network."""
+    visited_blocks = set([])
+    block_times_by_number = {}
+    max_num = 0
+    for m in metrics:
+        if m["event"] != "broadcastBlock": continue
+        num = m["number"]
+        if num in visited_blocks: continue
+        visited_blocks.add(num)
 
+        block_times_by_number[num] = m
+        if num > max_num: max_num = num
+
+ #   max_num = 100
+    block_times = [0] # Assume block #1 took 0ms ("starting block")
+    for num in range(2, max_num + 1):
+        delta = block_times_by_number[num]["timestamp"] - block_times_by_number[num - 1]["timestamp"]
+        block_times.append(delta)
+
+    plt.clf()
+    plt.hist(block_times, bins=range(4900, 5500, 10), facecolor='g', alpha=0.75, cumulative=False)
+    #plt.bar(range(1, 101), block_times)
+    plt.show()
+    plt.clf()
+    return
+
+def block_propagation_by_time(prop_times):
+    #TODO(mvanotti): Complete this!
+    return
 
 def main():
     """Usage: python parser.py < logfile """
@@ -284,7 +317,7 @@ def main():
     block_prop_times = block_propagation(metrics)
     block_stats, unreceived = propagation_statistics(len(nodes), block_prop_times)
     print("Blocks not received by everyone: %d/%d" % (len(unreceived), len(block_prop_times)))
-    for k in unreceived[20:30]:
+    for k in unreceived[:30]:
         print(k, len(block_prop_times[k]))
 
     for p in sorted(block_stats.keys()):
@@ -295,7 +328,9 @@ def main():
 
     block_propagation_histogram(block_prop_times)
 
+    block_generation_graph(metrics)
 
+"""
     tx_prop_times = transaction_propagation(metrics)
     tx_stats, unreceived = propagation_statistics(len(nodes), tx_prop_times)
     print("Txs not received by everyone: %d/%d" % (len(unreceived), len(tx_prop_times)))
@@ -308,9 +343,9 @@ def main():
         print("mean: %d, median: %d, max: %d, min: %d, stddev: %d, variance: %d" %
               (mean(vals), median(vals), max(vals), min(vals), stdev(vals), variance(vals)))
 
-    # block_propagation_histogram(tx_prop_times)
-    # bwInfo = getBandwithUsage(metrics)
-
+        # block_propagation_histogram(tx_prop_times)
+        # bwInfo = getBandwithUsage(metrics)
+"""
 
 if __name__ == "__main__":
     main()
