@@ -2,6 +2,7 @@ from statistics import mean, median, stdev, variance
 import numpy as np
 import matplotlib.mlab as mlab
 import matplotlib.pyplot as plt
+from os import path
 
 def calculateTimeDifferences(host_metrics):
     """ calculateTimeDifferences will print the statistics about the time differences for the metrics for this host.
@@ -63,32 +64,47 @@ def propagation_statistics(nodes, prop_times):
 
     return percentages, unreceived
 
-def block_propagation_histogram(prop_times):
+
+def propagation_histogram(prop_times, filePrefix, dstPath="/tmp/"):
+    """
+        Generates propagation histogram graphs.
+        filePrefix is the prefix to use for the saved images.
+        dstPath is the path in which images will be saved.
+        generated files will be dstPath/filePrefix-cumulative.png
+        generated files will be dstPath/filePrefix-noncumulative.png
+    """
+    noncumulative_filename = path.join(dstPath, "%s-noncumulative.png" % (filePrefix))
+    cumulative_filename = path.join(dstPath, "%s-cumulative.png" % (filePrefix))
     data = []
+
     for h, times in prop_times.items():
         data += [min(t[0]/1000.0, 10.0) for t in times]
-
-    # the histogram of the data
+        # the histogram of the data
         bins = [x/4.0 for x in range(0, 41)]
-    print(bins)
+
     n, bins, patches = plt.hist(data, bins=bins, facecolor='g', alpha=0.75, weights=100*(np.zeros_like(data) + 1. / len(data)), cumulative=True)
+    plt.axis([0, 10, 0, 100])
 
     plt.xlabel('Seconds')
-    plt.ylabel('cumulative % of Blocks Received')
-    plt.title('Histogram of Block Propagation Times (cumulative)')
+    plt.ylabel('cumulative %% of %s Received' % filePrefix)
+    plt.title('Histogram of %s Propagation Times (cumulative)' % filePrefix)
     plt.grid(True)
-    plt.savefig(filename="/tmp/cumulative.png")
+    plt.savefig(filename=cumulative_filename)
     plt.clf()
     n, bins, patches = plt.hist(data, bins=bins, facecolor='g', alpha=0.75, weights=100*(np.zeros_like(data) + 1. / len(data)), cumulative=False)
     plt.xlabel('Seconds')
-    plt.ylabel('% of Blocks Received')
-    plt.title('Histogram of Block Propagation Times')
+    plt.ylabel('%% of %s Received' % filePrefix)
+    plt.title('Histogram of %s Propagation Times' % filePrefix)
     plt.grid(True)
-    plt.savefig(filename="/tmp/noncumulative.png")
+    plt.savefig(filename=noncumulative_filename)
     plt.clf()
 
-def block_generation_graph(metrics):
-    """ Generates a graph displaying how much time did each block (by number) took to appear on the network."""
+def generation_graph(metrics, filePrefix, path="/tmp/"):
+    """
+        Generates a graph displaying how much time did each block (by number) took to appear on the network.
+        filePrefix is the prefix to use for the saved images.
+        path is the path in which images will be saved.
+    """
     visited_blocks = set([])
     block_times_by_number = {}
     max_num = 0
