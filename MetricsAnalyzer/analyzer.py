@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.mlab as mlab
 import matplotlib.pyplot as plt
 from os import path
+from collections import Counter
 
 def calculateTimeDifferences(host_metrics):
     """ calculateTimeDifferences will print the statistics about the time differences for the metrics for this host.
@@ -99,7 +100,30 @@ def propagation_histogram(prop_times, filePrefix, dstPath="/tmp/"):
     plt.savefig(filename=noncumulative_filename)
     plt.clf()
 
-def generation_graph(metrics, filePrefix, path="/tmp/"):
+def groupBlocks(block_nums):
+    dctCounter = {}
+    prevBlock = 0
+    prevBlockCounter = 0
+    for n in block_nums:
+        if prevBlock != n:
+            dctCounter[prevBlock] = prevBlockCounter
+            prevBlockCounter = 0
+            prevBlock = n
+        prevBlockCounter += 1
+    return list(dctCounter.values())
+
+def repeated_blocks_graph(blocks):
+    block_nums = sorted([m["number"] for m in blocks])
+    blocks_count = groupBlocks(block_nums)
+    max_block_count = max(blocks_count)
+    plt.clf()
+    plt.hist(blocks_count, bins=range(1, max_block_count + 1, 1), facecolor='r', alpha=0.75, cumulative=False)
+    plt.grid(True)
+    plt.show()
+    #plt.show()
+
+
+def generation_graph(metrics, filePrefix, dstPath="/tmp/"):
     """
         Generates a graph displaying how much time did each block (by number) took to appear on the network.
         filePrefix is the prefix to use for the saved images.
@@ -124,10 +148,63 @@ def generation_graph(metrics, filePrefix, path="/tmp/"):
         block_times.append(delta)
 
     plt.clf()
-    plt.hist(block_times, bins=range(4900, 5500, 10), facecolor='g', alpha=0.75, cumulative=False)
+    plt.hist(block_times, bins = range(0, 70000, 3000), facecolor='b', alpha=0.75, cumulative=False)
     #plt.bar(range(1, 101), block_times)
-    plt.show()
+    plt.xlabel("Generation time (milliseconds)")
+    plt.ylabel("Amount of %s generated in that time" % filePrefix)
+    plt.title("Histogram of %s generation times" % filePrefix)
+    plt.grid(True)
+    plt.savefig(filename=path.join(dstPath, "%s-generationhist.png" % filePrefix))
     plt.clf()
+
+    plt.clf()
+
+    y = np.array(block_times[1:])
+    x = np.array(range(1, len(y) + 1))
+
+    ys = []
+    tmp_sum = 0
+    for i in range(min(250, len(y))):
+        tmp_sum += y[i]
+        ys.append(tmp_sum)
+    for i in range(250, len(y)):
+        tmp_sum += y[i] - y[i - 250]
+        ys.append(tmp_sum)
+
+    for i in range(len(ys)):
+        if i < 250:
+            ys[i] /= float(i + 1)
+        else:
+            ys[i] /= 250.0
+    ys = np.array(ys)
+    target = [10000 for x in ys]
+
+    cyan = y < 10000
+    azul = (y >= 10000) & (y < 20000)
+    verde = (y >= 20000) & (y < 30000)
+    amarillo = (y >= 30000) & (y < 40000)
+    naranja = (y >= 40000) & (y < 50000)
+    rojo = y > 50000
+
+    fig = plt.figure(10, figsize=(80, 5), dpi=1000)
+    plt.bar(x[cyan], y[cyan], color='#33adff', width=1.0)
+    plt.bar(x[azul], y[azul], color='cyan', width=1.0)
+    plt.bar(x[verde], y[verde], color='#1aff1a', width=1.0)
+    plt.bar(x[amarillo], y[amarillo], color='yellow', width=1.0)
+    plt.bar(x[naranja], y[naranja], color='orange', width=1.0)
+    plt.bar(x[rojo], y[rojo], color='red', width=1.0)
+    plt.plot(x, ys, '-', color='blue' )
+    plt.plot(x, target, '-', color='red')
+
+    plt.xlim(1, len(y))
+    plt.xlabel("Block Number")
+    plt.ylabel("Generation time (ms)")
+    plt.savefig(filename=path.join(dstPath, "%s-generation.svg" % filePrefix), format="svg")
+    plt.clf()
+
+    fig.clear()
+    plt.close()
+
     return
 
 def block_propagation_by_time(prop_times):
@@ -169,8 +246,6 @@ def block_propagation(metrics):
 
         propagation_times[(hash,start_time)] = times
     return propagation_times
-
-
 def transaction_propagation(metrics):
     txs = {}
     for m in filter(lambda m: m["event"] in ["broadcastTransaction", "newTransaction"], metrics):
