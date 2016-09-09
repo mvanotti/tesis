@@ -1,4 +1,4 @@
-blockchain.config.name = "regtest"
+blockchain.config.name = "cfg"
 
 peer.discovery = {
     enabled = false
@@ -104,6 +104,7 @@ sync {
 miner {
     server.enabled = {{ .N.Minerserver }}
     client.enabled = {{ .N.Minerclient }}
+    client.simulatedshare = {{ .N.SimulatedShare }}
     minGasPrice = 0
     # these are values used by MinerServer to set the notify flag on/off
     gasUnitInDollars = 0.001
@@ -134,3 +135,5 @@ blocks {
 wire {
     protocol: "rsk"
 }
+
+blocks.duration = 13
