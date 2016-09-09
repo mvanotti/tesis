@@ -2,6 +2,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -23,31 +24,40 @@ type nodeID struct {
 }
 
 var (
-	maxNodes     = flag.Int("n", 20, "Maximum Amount of Nodes")
-	nodesFolder  = flag.String("ndir", "nodeids", "Folder in which to find all the json files with the nodes description")
-	cantMiners   = flag.Int("m", 5, "Miners amount")
-	cantTxSim    = flag.Int("txs", 0, "Nodes that will simulate txs")
-	minPeers     = flag.Int("minP", 3, "Minimum amount of peers")
-	maxPeers     = flag.Int("maxP", 9, "Maximum amount of peers")
-	configFolder = flag.String("cdir", "configs", "Folder in which to store all the generated configuration files")
+	maxNodes      = flag.Int("n", 20, "Maximum Amount of Nodes")
+	nodesFolder   = flag.String("ndir", "nodeids", "Folder in which to find all the json files with the nodes description")
+	cantMiners    = flag.Int("m", 5, "Miners amount")
+	cantTxSim     = flag.Int("txs", 0, "Nodes that will simulate txs")
+	minPeers      = flag.Int("minP", 3, "Minimum amount of peers")
+	maxPeers      = flag.Int("maxP", 9, "Maximum amount of peers")
+	configFolder  = flag.String("cdir", "configs", "Folder in which to store all the generated configuration files")
+	hostnamesFile = flag.String("hostnames", "", "File containing all the hostnames, one by one")
+	port          = flag.String("port", "30305", "Port to use")
 )
 
 type node struct {
-	Ip          string
-	Port        string
-	Minerclient bool
-	Minerserver bool
-	SimulateTxs bool
-	Id          nodeID
-	Peers       []int
+	Ip             string
+	Port           string
+	Minerclient    bool
+	Minerserver    bool
+	SimulatedShare float64
+	SimulateTxs    bool
+	Id             nodeID
+	Peers          []int
 }
 
 func main() {
 	flag.Parse()
 	rand.Seed(time.Now().UnixNano())
 
+	var nodeIPs []string
+	if len(*hostnamesFile) > 0 {
+		nodeIPs = getNodesHostnames(*hostnamesFile)
+		*maxNodes = len(nodeIPs)
+	} else {
+		nodeIPs = genNodeIPs(*maxNodes)
+	}
 	nodeIDs := parseNodeIDs(*nodesFolder, *maxNodes)
-	nodeIPs := genNodeIPs(*maxNodes)
 
 	nodes := getNodes(nodeIDs, nodeIPs)
 
@@ -141,6 +151,7 @@ func addMiners(nodes []node, miners int) {
 
 		nodes[k].Minerclient = true
 		nodes[k].Minerserver = true
+		nodes[k].SimulatedShare = 1.0 / float64(miners)
 	}
 }
 
@@ -207,7 +218,7 @@ func getNodes(nodeIDs []nodeID, nodeIPs []string) []node {
 		id := nodeIDs[i]
 		ip := nodeIPs[i]
 
-		res = append(res, node{Ip: ip, Port: "30305", Minerclient: false, Minerserver: false, Id: id})
+		res = append(res, node{Ip: ip, Port: *port, Minerclient: false, Minerserver: false, Id: id})
 	}
 
 	return res
@@ -264,4 +275,24 @@ func genNodeIPs(maxNodes int) []string {
 		ips = append(ips, ip)
 	}
 	return ips
+}
+
+func getNodesHostnames(hostnamesFile string) []string {
+	file, err := os.Open(hostnamesFile)
+	if err != nil {
+		log.Fatalf("Could not open hostnames file: %v", err)
+	}
+	defer file.Close()
+	hostnames := []string{}
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		hostnames = append(hostnames, scanner.Text())
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+
+	return hostnames
 }
