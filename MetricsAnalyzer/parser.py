@@ -36,6 +36,7 @@ def parseBroadcastBlock(metric):
         "hash": metric[3],
         "number": int(metric[5]),
         "parent": metric[7],
+        "difficulty": int(metric[9]) if len(metric) > 9 else 1
     }
 
 

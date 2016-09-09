@@ -2,6 +2,7 @@ import unittest
 from parser import parseMetric
 
 
+
 class ParserTest(unittest.TestCase):
     def test(self):
         tests = [
@@ -18,7 +19,21 @@ class ParserTest(unittest.TestCase):
                     'event': "broadcastBlock",
                     'hash': "7da33b",
                     'number': int(1),
-                    'parent': "a7f584"
+                    'parent': "a7f584",
+                    'difficulty': 1,
+                }
+            },
+            {
+                "input": "15:01:35.647 INFO [metrics]  950a92 at: 1473271295647 nano: 18065921990182 | event: broadcastBlock hash: 77fe09 number: 49 parent: b2633e diff: 3150315 ",
+                "output": {
+                    'nodeID': "950a92",
+                    'timestamp': int(1473271295647),
+                    'nano': int(18065921990182),
+                    'event': "broadcastBlock",
+                    'hash': "77fe09",
+                    'number': int(49),
+                    'parent': "b2633e",
+                    'difficulty': 3150315,
                 }
             },
             {
