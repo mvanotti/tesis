@@ -119,9 +119,16 @@ def repeated_blocks_graph(blocks):
     plt.clf()
     plt.hist(blocks_count, bins=range(1, max_block_count + 1, 1), facecolor='r', alpha=0.75, cumulative=False)
     plt.grid(True)
-    plt.show()
+    #plt.show()
     #plt.show()
 
+
+def plothist(deltas, s):
+    plt.clf()
+    print(max(deltas))
+    plt.hist(deltas, bins=range(0, int(max(deltas)), 2000), facecolor='b', alpha=0.75, cumulative=False)
+    #plt.show()
+    plt.clf()
 
 def generation_graph(metrics, filePrefix, dstPath="/tmp/"):
     """
@@ -147,8 +154,9 @@ def generation_graph(metrics, filePrefix, dstPath="/tmp/"):
         delta = block_times_by_number[num]["timestamp"] - block_times_by_number[num - 1]["timestamp"]
         block_times.append(delta)
 
+    block_times = block_times[1:]
     plt.clf()
-    plt.hist(block_times, bins = range(0, 70000, 3000), facecolor='b', alpha=0.75, cumulative=False)
+    plt.hist(block_times, bins = range(0, 70000, 1500), facecolor='b', alpha=0.75, cumulative=False)
     #plt.bar(range(1, 101), block_times)
     plt.xlabel("Generation time (milliseconds)")
     plt.ylabel("Amount of %s generated in that time" % filePrefix)
@@ -159,23 +167,24 @@ def generation_graph(metrics, filePrefix, dstPath="/tmp/"):
 
     plt.clf()
 
-    y = np.array(block_times[1:])
+    y = np.array(block_times[1: ])
     x = np.array(range(1, len(y) + 1))
 
     ys = []
     tmp_sum = 0
-    for i in range(min(250, len(y))):
+    avg_size = 200
+    for i in range(min(avg_size, len(y))):
         tmp_sum += y[i]
         ys.append(tmp_sum)
-    for i in range(250, len(y)):
-        tmp_sum += y[i] - y[i - 250]
+    for i in range(avg_size, len(y)):
+        tmp_sum += y[i] - y[i - avg_size]
         ys.append(tmp_sum)
 
     for i in range(len(ys)):
-        if i < 250:
+        if i < avg_size:
             ys[i] /= float(i + 1)
         else:
-            ys[i] /= 250.0
+            ys[i] /= float(avg_size)
     ys = np.array(ys)
     target = [10000 for x in ys]
 
