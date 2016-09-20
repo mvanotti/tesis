@@ -20,11 +20,10 @@ def group_blocks_by_sender(blocks):
         res[b["nodeID"]].append(b)
 
     for s in res.keys():
-        print("Sender: %s" % s)
+        print("Sender: %s | blocks: %d" % (s, len(res[s])))
         ts1 = sorted([m["timestamp"] for m in res[s]])
         ts2 = [0] + ts1
         deltas = [(ts1[i] - ts2[i]) for i in range(len(ts1))][1:]
-        #print(deltas[:10])
         print("Mean: %.4f Median: %.4f Std: %.4f, blocks: %d" % (mean(deltas), median(deltas), stdev(deltas), len(deltas)))
         plothist(deltas, s)
 
@@ -36,6 +35,10 @@ def group_blocks_by_sender(blocks):
     plothist(deltas, "Global Info")
     return res
 
+def discard_last(metrics, cutoff):
+    cutoff_time = metrics[-1]["timestamp"] - cutoff
+    return [m for m in metrics if m["timestamp"] < cutoff_time]
+
 def main():
     """Usage: python parser.py < logfile """
     metrics = []
@@ -46,6 +49,7 @@ def main():
         metrics.append(metric)
         nodes.add(metric["nodeID"])
     metrics = linearize(metrics)
+    metrics = discard_last(metrics, 1000 * 60)
 
     all_blocks = get_all_blocks(metrics)
     print("Total blocks sent: %d" % len(all_blocks))
@@ -53,7 +57,7 @@ def main():
 
     blocks = get_all_broadcasted_blocks(metrics)
     blocks_by_sender = group_blocks_by_sender(blocks)
-    genesis = Block({"hash": "efce23", "parent": "000000", "timestamp":0, "number":0, "nodeID": "000000", "difficulty": 1})
+    genesis = Block({"hash": "a7f58406", "parent": "000000", "timestamp":0, "number":0, "nodeID": "000000", "difficulty": 1})
     blockchain = Blockchain(genesis)
 
     generation_graph(metrics, "blocks")
@@ -63,9 +67,11 @@ def main():
         print("Not enough data! %.2f minutes" % ((metrics[-1]["timestamp"] - metrics[0]["timestamp"]) / (60.0 * 1000.0)))
         return
 
+    blocks = get_all_broadcasted_blocks(metrics)
     for metric in blocks:
         block = Block(metric)
         blockchain.add_block(block)
+
     print("Calculating forks")
     print(blockchain.count_forks_depth())
     print("Calculating amount of forked blocks")
@@ -77,7 +83,7 @@ def main():
     for k in random.sample(unreceived, min(30, len(unreceived))):
         print(k, len(block_prop_times[k]))
 
-    #propagation_histogram(block_prop_times, "blocks")
+    propagation_histogram(block_prop_times, "blocks")
 
 
     for p in sorted(block_stats.keys()):
@@ -122,6 +128,17 @@ def get_all_broadcasted_blocks(metrics):
         if m["event"] != "broadcastBlock": continue
         if (m["hash"], m["number"]) in visited: continue
         visited.add((m["hash"], m["number"]))
+        res.append(m)
+    return res
+
+def get_all_broadcasted_blocks_by_number(metrics):
+    """Returns, for each broadcasted block, the first appearence. """
+    visited = set([])
+    res = []
+    for m in metrics:
+        if m["event"] != "broadcastBlock": continue
+        if m["number"] in visited: continue
+        visited.add(m["number"])
         res.append(m)
     return res
 
