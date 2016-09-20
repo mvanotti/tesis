@@ -136,4 +136,4 @@ wire {
     protocol: "rsk"
 }
 
-blocks.duration = 13
+blocks.duration = 10
