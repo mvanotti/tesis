@@ -10,6 +10,7 @@ from mininet.node import OVSSwitch
 def simpleTest():
   "Create and test a simple network"
   total_time = 60 * 60
+  max_nodes_per_worker = 3
   n = 50
   topo = FatTree(n, 10, 1)
 
@@ -17,16 +18,23 @@ def simpleTest():
 
   exp = maxinet.Experiment(cluster, topo, switch=OVSSwitch)
   exp.setup()
-  print "Hostname mapping:", exp.generate_hostname_mapping()
+  print("Hostname mapping:", exp.generate_hostname_mapping())
   hosts = [exp.get_node("h%d" % i) for i in range(1, n+1)]
+  workers = {}
   for h in hosts:
-    print "For host ", h.name, " Worker is ", exp.get_worker(h).hn()
-  for h in hosts:
-    print "Host %s has ip %s" % (h.name, h.IP())
+    worker = exp.get_worker(h).hn()
+    print("For host ", h.name, " Worker is ", worker)
+    if not worker in workers:
+      workers[worker] = []
+    workers[worker].append(h.IP())
+  # En workers tenemos, para cada worker, la cantidad de hosts que hay.
 
-  print "waiting 10 seconds for routing algorithms on te controller to converge"
+  for h in hosts:
+    print("Host %s has ip %s" % (h.name, h.IP()))
+
+  print("waiting 10 seconds for routing algorithms on te controller to converge")
   sleep(10)
-  print "Starting experiment!!"
+  print("Starting experiment!!")
 
   cmd = {}
   for h in hosts:
@@ -37,7 +45,7 @@ def simpleTest():
     cmd[h.name] = c
     
   for h in hosts:
-    print cmd[h.name], h.cmd(cmd[h.name])
+    print(cmd[h.name], h.cmd(cmd[h.name]))
 
   sleep(total_time + 60)
   exp.stop()
