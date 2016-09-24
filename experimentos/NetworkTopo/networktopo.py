@@ -1,8 +1,10 @@
 import csv
 from collections import Counter
 from random import sample
+import pickle
 
 import xml.etree.ElementTree
+import argparse
 
 
 def parse_elem(e):
@@ -52,8 +54,8 @@ def parse_latencies(filepath):
         if dstc not in neighbors:
             neighbors[dstc] = {}
 
-        neighbors[srcc][dstc] = e["latency"]
-        neighbors[dstc][srcc] = e["latency"]
+        neighbors[srcc][dstc] = (e["latency"], e["jitter"], e["packetloss"])
+        neighbors[dstc][srcc] = (e["latency"], e["jitter"], e["packetloss"])
 
     return neighbors
 
@@ -92,9 +94,25 @@ def pick_random_topo(countries, latencies, amount):
     return topo
 
 def main():
+    parser = argparse.ArgumentParser(description='Generate network topologies.')
+    parser.add_argument('--n', dest="n", type=int, default=32, help="Number of nodes to use")
+    parser.add_argument('--topofile', dest="topofile", type=str, default="topo.pickle", help="File in which to store the topology.")
+    args = parser.parse_args()
+
     countries = parse_topo("country-distribution.csv")
-    latencies = parse_latencies("topology.graphml.xml")
-    print pick_random_topo(countries, latencies)
+    latencies = parse_latencies("topology.plab.graphml.xml")
+    latencies2 = parse_latencies("topology.graphml.xml")
+    topo = pick_random_topo(countries, latencies, args.n)
+    topo2 = pick_random_topo(countries, latencies, args.n)
+
+    lats = [x[1][0] for k in topo.keys() for x in topo[k]]
+    lats2 = [x[1][0] for k in topo2.keys() for x in topo2[k]]
+
+    print("Topo1: %.4f" % (sum(lats)/len(lats)))
+    print("Topo2: %.4f" % (sum(lats2)/len(lats2)))
+
+    with open(args.topofile, "w") as f:
+        pickle.dump(topo, f)
 
 if __name__ == "__main__":
     main()
