@@ -1,5 +1,6 @@
 .*
 *.o
 configGen/logsconfigs/log4j*
-configGen/configs/*.conf
-configGen/configs/*.dot
+configGen/configs/*.conf*
+configGen/configs/*.dot*
+*.pyc
