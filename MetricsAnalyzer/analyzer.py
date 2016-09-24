@@ -77,14 +77,13 @@ def propagation_histogram(prop_times, filePrefix, dstPath="/tmp/"):
     noncumulative_filename = path.join(dstPath, "%s-noncumulative.png" % (filePrefix))
     cumulative_filename = path.join(dstPath, "%s-cumulative.png" % (filePrefix))
     data = []
-
+    print("Calculating Histogram")
     for h, times in prop_times.items():
-        data += [min(t[0]/1000.0, 10.0) for t in times]
+        data += [min(t[0], 10000.0) for t in times]
         # the histogram of the data
-        bins = [x/4.0 for x in range(0, 41)]
 
-    n, bins, patches = plt.hist(data, bins=bins, facecolor='g', alpha=0.75, weights=100*(np.zeros_like(data) + 1. / len(data)), cumulative=True)
-    plt.axis([0, 10, 0, 100])
+    n, bins, patches = plt.hist(data, bins=range(0, 5000, 50), facecolor='g', alpha=0.75, weights=100*(np.zeros_like(data) + 1. / len(data)), cumulative=True)
+    plt.axis([0, 5000, 0, 100])
 
     plt.xlabel('Seconds')
     plt.ylabel('cumulative %% of %s Received' % filePrefix)
@@ -92,7 +91,8 @@ def propagation_histogram(prop_times, filePrefix, dstPath="/tmp/"):
     plt.grid(True)
     plt.savefig(filename=cumulative_filename)
     plt.clf()
-    n, bins, patches = plt.hist(data, bins=bins, facecolor='g', alpha=0.75, weights=100*(np.zeros_like(data) + 1. / len(data)), cumulative=False)
+    n, bins, patches = plt.hist(data, bins=range(0, 5000, 50), facecolor='g', alpha=0.75, weights=100*(np.zeros_like(data) + 1. / len(data)), cumulative=False)
+    plt.axis([0, 5000, 0, 16])
     plt.xlabel('Seconds')
     plt.ylabel('%% of %s Received' % filePrefix)
     plt.title('Histogram of %s Propagation Times' % filePrefix)
@@ -125,7 +125,7 @@ def repeated_blocks_graph(blocks):
 
 def plothist(deltas, s):
     plt.clf()
-    print(max(deltas))
+    #print(max(deltas))
     plt.hist(deltas, bins=range(0, int(max(deltas)), 2000), facecolor='b', alpha=0.75, cumulative=False)
     #plt.show()
     plt.clf()
@@ -222,7 +222,8 @@ def block_propagation_by_time(prop_times):
 
 def block_propagation(metrics):
     # Discard blocks from the beggining and end of the experiment.
-    cutoff_time_end = metrics[-1]["timestamp"] - 60*1000*5
+    #cutoff_time_end = metrics[-1]["timestamp"] - 60*1000*5
+    cutoff_time_end = metrics[0]["timestamp"] + 60*1000*60*11
     cutoff_time_begin = metrics[0]["timestamp"] + 60*1000*5
 
     blocks = {}
@@ -251,10 +252,12 @@ def block_propagation(metrics):
             visited.add(node)
 
             elapsed = m["timestamp"] - start_time
+            #if elapsed > 5000: print(m["nodeID"], elapsed)
             times.append((elapsed, node))
 
         propagation_times[(hash,start_time)] = times
     return propagation_times
+
 def transaction_propagation(metrics):
     txs = {}
     for m in filter(lambda m: m["event"] in ["broadcastTransaction", "newTransaction"], metrics):

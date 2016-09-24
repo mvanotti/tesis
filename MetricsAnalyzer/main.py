@@ -8,9 +8,6 @@ from blockchain import Block, Blockchain
 import random
 
 
-
-
-
 def group_blocks_by_sender(blocks):
     res = {}
     blocks = blocks[:]
@@ -20,12 +17,12 @@ def group_blocks_by_sender(blocks):
         res[b["nodeID"]].append(b)
 
     for s in res.keys():
-        print("Sender: %s | blocks: %d" % (s, len(res[s])))
+        print("Miner: %s | blocks: %d" % (s, len(res[s])))
         ts1 = sorted([m["timestamp"] for m in res[s]])
         ts2 = [0] + ts1
         deltas = [(ts1[i] - ts2[i]) for i in range(len(ts1))][1:]
-        print("Mean: %.4f Median: %.4f Std: %.4f, blocks: %d" % (mean(deltas), median(deltas), stdev(deltas), len(deltas)))
-        plothist(deltas, s)
+        #print("Mean: %.4f Median: %.4f Std: %.4f, blocks: %d" % (mean(deltas), median(deltas), stdev(deltas), len(deltas)))
+        #plothist(deltas, s)
 
     print("Global Info")
     ts1 = sorted([m["timestamp"] for m in blocks])
@@ -35,9 +32,16 @@ def group_blocks_by_sender(blocks):
     plothist(deltas, "Global Info")
     return res
 
+def take_first(metrics, cutoff):
+    cutoff_time = metrics[0]["timestamp"] + cutoff
+    return [m for m in metrics if m["timestamp"] < cutoff_time]
+
 def discard_last(metrics, cutoff):
     cutoff_time = metrics[-1]["timestamp"] - cutoff
     return [m for m in metrics if m["timestamp"] < cutoff_time]
+
+def take_first_blocks(metrics, cutoff):
+    return [m for m in metrics if "number" not in m or m["number"] < cutoff]
 
 def main():
     """Usage: python parser.py < logfile """
@@ -49,14 +53,15 @@ def main():
         metrics.append(metric)
         nodes.add(metric["nodeID"])
     metrics = linearize(metrics)
-    metrics = discard_last(metrics, 1000 * 60)
+    metrics = take_first(metrics, 11 * 60 * 60 * 1000)
+    metrics = take_first_blocks(metrics, 1000)
 
     all_blocks = get_all_blocks(metrics)
     print("Total blocks sent: %d" % len(all_blocks))
 
 
     blocks = get_all_broadcasted_blocks(metrics)
-    blocks_by_sender = group_blocks_by_sender(blocks)
+    blocks_by_sender = group_blocks_by_sender(get_all_broadcasted_blocks_by_number(metrics))
     genesis = Block({"hash": "a7f58406", "parent": "000000", "timestamp":0, "number":0, "nodeID": "000000", "difficulty": 1})
     blockchain = Blockchain(genesis)
 
@@ -72,9 +77,9 @@ def main():
         block = Block(metric)
         blockchain.add_block(block)
 
-    print("Calculating forks")
+    print("Calculating forks depth")
     print(blockchain.count_forks_depth())
-    print("Calculating amount of forked blocks")
+    print("Calculating amount of competing blocks")
     print(blockchain.count_repeated_blocks())
 
     block_prop_times = block_propagation(metrics)
