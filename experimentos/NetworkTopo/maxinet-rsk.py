@@ -12,7 +12,7 @@ import random
 import pickle
 
 def simpleTest():
-    total_time = 60 * 60 * 3
+    total_time = 60 * 60 * 24
     with open("topo.pickle", "r") as f:
         conns = pickle.load(f)
 
@@ -38,7 +38,7 @@ def simpleTest():
 
     sleep(60 * 30)
 
-    for duration in [10, 8, 6, 4, 2]:
+    for duration in [10]:
         cmd = {}
         for i in range(len(hosts)):
             h = hosts[i]

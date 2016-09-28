@@ -53,7 +53,5 @@ class P2P(Topo):
                 if key not in p2pconns and keyrev not in p2pconns: continue
 
                 lat, jitter, loss = info
-                lat *= 2
-                lat = 200.0
                 print("%s <-> %s (%.2fms)" % (host1, host2, lat))
                 self.addLink(s1, s2, bw=bw, delay=("%.2fms" % lat), jitter=jitter, loss=loss)

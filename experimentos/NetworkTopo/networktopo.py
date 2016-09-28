@@ -1,11 +1,11 @@
 import csv
 from collections import Counter
-from random import sample
+from random import sample, choice
 import pickle
 
 import xml.etree.ElementTree
+import xml.etree.ElementTree as etree
 import argparse
-
 
 def parse_elem(e):
     return {
@@ -53,10 +53,77 @@ def parse_latencies(filepath):
             neighbors[srcc] = {}
         if dstc not in neighbors:
             neighbors[dstc] = {}
+        if dstc not in neighbors[srcc]:
+            neighbors[srcc][dstc] = []
+        if srcc not in neighbors[dstc]:
+            neighbors[dstc][srcc] = []
 
-        neighbors[srcc][dstc] = (e["latency"], e["jitter"], e["packetloss"])
-        neighbors[dstc][srcc] = (e["latency"], e["jitter"], e["packetloss"])
+        neighbors[srcc][dstc].append((e["latency"], e["jitter"], e["packetloss"]))
+        neighbors[dstc][srcc].append((e["latency"], e["jitter"], e["packetloss"]))
 
+    return neighbors
+
+def parse_latencies2(filepath):
+    nodes = {}
+    codes = {}
+    edges = []
+    neighbors = {}
+    id = None
+    vals = {}
+    numnodes = 0
+    numedges = 0
+
+    print("Start parsing XML")
+    for event, elem in etree.iterparse(filepath, events=['start', 'end']):
+        if event == 'end' and elem.tag == '{http://graphml.graphdrawing.org/xmlns}data' and innode:
+            k, v = parse_elem(elem)
+            vals[k] = v
+            if k == "geocode":
+                codes[id] = v
+        if event == 'end' and elem.tag == '{http://graphml.graphdrawing.org/xmlns}data' and not innode:
+            k, v = parse_elem(elem)
+            vals[k] = v
+
+        if event == 'start' and elem.tag == '{http://graphml.graphdrawing.org/xmlns}node':
+            numnodes += 1
+            if numnodes % 100 == 0: print numnodes
+            id = elem.attrib["id"]
+            vals = {"id": id}
+            innode = True
+
+        if event == 'start' and elem.tag == '{http://graphml.graphdrawing.org/xmlns}edge':
+            numedges += 1
+            if numedges % 100000 == 0: print numedges
+            src, dst = elem.attrib["source"], elem.attrib["target"]
+            vals = {"src": src, "dst": dst}
+
+        if event == "end":
+            if elem.tag == '{http://graphml.graphdrawing.org/xmlns}node':
+                nodes[v] = vals
+                vals = {}
+                innode = False
+            if elem.tag == '{http://graphml.graphdrawing.org/xmlns}edge':
+                edges.append(vals)
+                vals = {}
+            elem.clear()
+    print("XML Parsed")
+
+    print("Start Adding Edges")
+    for e in edges:
+        srcc = codes[e["src"]]
+        dstc = codes[e["dst"]]
+        if srcc not in neighbors:
+            neighbors[srcc] = {}
+        if dstc not in neighbors:
+            neighbors[dstc] = {}
+        if dstc not in neighbors[srcc]:
+            neighbors[srcc][dstc] = []
+        if srcc not in neighbors[dstc]:
+            neighbors[dstc][srcc] = []
+
+        neighbors[srcc][dstc].append((e["latency"], e["jitter"], e["packetloss"]))
+        neighbors[dstc][srcc].append((e["latency"], e["jitter"], e["packetloss"]))
+    print("All edges added")
     return neighbors
 
 def parse_topo(filepath):
@@ -82,16 +149,28 @@ def pick_random_topo(countries, latencies, amount):
         if h1 not in topo: topo[h1] = []
         if not node1 in latencies:
             print("Error! Node1 %s not recognized!" % node1)
+            exit(1)
         for j in range(i + 1, len(nodes)):
             node2 = nodes[j]
             h2 = "%d-%s" % (j, node2)
             if not node2 in latencies:
                 print("Error! Node2 %s not recognized!" % node2)
+                exit(1)
             if not node2 in latencies[node1]:
                 print("Error! Node2 %s not in latencies[%s]!" % (node2, node1))
-            lat = latencies[node1][node2]
+                exit(1)
+            lat = choice(latencies[node1][node2])
             topo[h1].append((h2, lat))
     return topo
+
+def pp(filepath):
+    parser = GraphMLParser()
+    g = parser.parse("topology.graphml.xml")
+    for n in g.nodes():
+        if "geocode" in n: print "geocode:", n["geocode"]
+        if "d2" in n: print "d2", n["d2"]
+    return g
+    #g.show()
 
 def main():
     parser = argparse.ArgumentParser(description='Generate network topologies.')
@@ -100,16 +179,13 @@ def main():
     args = parser.parse_args()
 
     countries = parse_topo("country-distribution.csv")
-    latencies = parse_latencies("topology.plab.graphml.xml")
-    latencies2 = parse_latencies("topology.graphml.xml")
+    latencies = parse_latencies2("topology.graphml.xml")
+    #graph = pp("topology.graphml.xml")
     topo = pick_random_topo(countries, latencies, args.n)
-    topo2 = pick_random_topo(countries, latencies, args.n)
 
     lats = [x[1][0] for k in topo.keys() for x in topo[k]]
-    lats2 = [x[1][0] for k in topo2.keys() for x in topo2[k]]
 
     print("Topo1: %.4f" % (sum(lats)/len(lats)))
-    print("Topo2: %.4f" % (sum(lats2)/len(lats2)))
 
     with open(args.topofile, "w") as f:
         pickle.dump(topo, f)
