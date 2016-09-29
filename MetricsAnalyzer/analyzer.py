@@ -1,9 +1,12 @@
 from statistics import mean, median, stdev, variance
 import numpy as np
-import matplotlib.mlab as mlab
 import matplotlib.pyplot as plt
 from os import path
-from collections import Counter
+
+from mpl_toolkits.axes_grid1 import host_subplot
+import matplotlib.patches as mpatches
+import mpl_toolkits.axisartist as AA
+
 
 def calculateTimeDifferences(host_metrics):
     """ calculateTimeDifferences will print the statistics about the time differences for the metrics for this host.
@@ -50,18 +53,18 @@ def metricsByHost(metrics):
 
 def propagation_statistics(nodes, prop_times):
     unreceived = []
-    percentages = {10:[], 50:[], 90:[], 100:[]}
-    indexes = [ min(int(x * nodes / 100.0), nodes - 1) for x in sorted(percentages.keys())]
+    percentages = {10:[], 50:[], 90:[], 95:[], 100:[]}
+    indexes = [ min(int(x * nodes / 100.0), nodes) - 1 for x in sorted(percentages.keys())]
     for hash, times in prop_times.items():
         if len(times) < nodes:
-            #print(hash, len(times))
             unreceived.append(hash)
             continue
         proptimes = [times[i][0] for i in indexes]
         percentages[10].append(proptimes[0])
         percentages[50].append(proptimes[1])
         percentages[90].append(proptimes[2])
-        percentages[100].append(proptimes[3])
+        percentages[95].append(proptimes[3])
+        percentages[100].append(proptimes[4])
 
     return percentages, unreceived
 
@@ -82,8 +85,9 @@ def propagation_histogram(prop_times, filePrefix, dstPath="/tmp/"):
         data += [min(t[0], 10000.0) for t in times]
         # the histogram of the data
 
-    n, bins, patches = plt.hist(data, bins=range(0, 5000, 50), facecolor='g', alpha=0.75, weights=100*(np.zeros_like(data) + 1. / len(data)), cumulative=True)
-    plt.axis([0, 5000, 0, 100])
+    cutoff_time = max(data)
+    n, bins, patches = plt.hist(data, bins=range(0, cutoff_time, 50), facecolor='g', alpha=0.75, weights=100*(np.zeros_like(data) + 1. / len(data)), cumulative=True)
+    plt.axis([0, cutoff_time, 0, 100])
 
     plt.xlabel('Seconds')
     plt.ylabel('cumulative %% of %s Received' % filePrefix)
@@ -91,8 +95,8 @@ def propagation_histogram(prop_times, filePrefix, dstPath="/tmp/"):
     plt.grid(True)
     plt.savefig(filename=cumulative_filename)
     plt.clf()
-    n, bins, patches = plt.hist(data, bins=range(0, 5000, 50), facecolor='g', alpha=0.75, weights=100*(np.zeros_like(data) + 1. / len(data)), cumulative=False)
-    plt.axis([0, 5000, 0, 16])
+    n, bins, patches = plt.hist(data, bins=range(0, cutoff_time, 50), facecolor='g', alpha=0.75, weights=100*(np.zeros_like(data) + 1. / len(data)), cumulative=False)
+    plt.axis([0, cutoff_time, 0, 16])
     plt.xlabel('Seconds')
     plt.ylabel('%% of %s Received' % filePrefix)
     plt.title('Histogram of %s Propagation Times' % filePrefix)
@@ -148,11 +152,13 @@ def generation_graph(metrics, filePrefix, dstPath="/tmp/"):
         block_times_by_number[num] = m
         if num > max_num: max_num = num
 
- #   max_num = 100
+
     block_times = [0] # Assume block #1 took 0ms ("starting block")
+    block_diffs = [1, block_times_by_number[1]["difficulty"] / 10000.0]
     for num in range(2, max_num + 1):
         delta = block_times_by_number[num]["timestamp"] - block_times_by_number[num - 1]["timestamp"]
         block_times.append(delta)
+        block_diffs.append(block_times_by_number[num]["difficulty"] / 10000.0)
 
     block_times = block_times[1:]
     plt.clf()
@@ -165,9 +171,9 @@ def generation_graph(metrics, filePrefix, dstPath="/tmp/"):
     plt.savefig(filename=path.join(dstPath, "%s-generationhist.png" % filePrefix))
     plt.clf()
 
-    plt.clf()
-
-    y = np.array(block_times[1: ])
+    y = np.array(block_times[1:])
+    ydiffs = np.array(block_diffs[1:])
+    xdiffs = np.array(range(1, len(ydiffs) + 1))
     x = np.array(range(1, len(y) + 1))
 
     ys = []
@@ -186,7 +192,7 @@ def generation_graph(metrics, filePrefix, dstPath="/tmp/"):
         else:
             ys[i] /= float(avg_size)
     ys = np.array(ys)
-    target = [10000 for x in ys]
+    target = [30000 for x in ys]
 
     cyan = y < 10000
     azul = (y >= 10000) & (y < 20000)
@@ -213,7 +219,41 @@ def generation_graph(metrics, filePrefix, dstPath="/tmp/"):
 
     fig.clear()
     plt.close()
+    plt.clf()
 
+    fig = plt.figure(111, figsize=(200, 5), dpi=500)
+    host = host_subplot(111, axes_class=AA.Axes)
+    plt.subplots_adjust(right=0.75)
+
+    par1 = host.twinx()
+    offset = 60
+
+    host.bar(x[cyan], y[cyan], color='#33adff', width=1.0)
+    host.bar(x[azul], y[azul], color='cyan', width=1.0)
+    host.bar(x[verde], y[verde], color='#1aff1a', width=1.0)
+    host.bar(x[amarillo], y[amarillo], color='yellow', width=1.0)
+    host.bar(x[naranja], y[naranja], color='orange', width=1.0)
+    host.bar(x[rojo], y[rojo], color='red', width=1.0)
+    host.plot(x, ys, '-', color='blue')
+    host.plot(x, target, '-', color='red')
+
+    plt.xlim(1, len(y))
+    host.set_ylim(0, max(y))
+    plt.xlabel("Block Number")
+    host.set_ylabel("Generation time (ms)")
+    par1.set_ylabel("Difficulty / 10000")
+    par1.get_xaxis().get_major_formatter().set_scientific(False)
+    par1.get_xaxis().get_major_formatter().set_useOffset(False)
+    print(ydiffs[-10:])
+
+    par1.plot(xdiffs, ydiffs, '-', color="green", linewidth=2.0)
+
+    green_patch = mpatches.Patch(color='green', label='Block Difficulty')
+    blue_patch = mpatches.Patch(color='blue', label='Rolling Average of Generation Times')
+    red_patch = mpatches.Patch(color='red', label='Target Duration')
+    plt.legend(handles=[red_patch, blue_patch, green_patch])
+
+    plt.savefig(filename=path.join(dstPath, "%s-generation-diff.png" % filePrefix), format="png")
     return
 
 def block_propagation_by_time(prop_times):
@@ -223,11 +263,14 @@ def block_propagation_by_time(prop_times):
 def block_propagation(metrics):
     # Discard blocks from the beggining and end of the experiment.
     #cutoff_time_end = metrics[-1]["timestamp"] - 60*1000*5
+
     cutoff_time_end = metrics[0]["timestamp"] + 60*1000*60*11
     cutoff_time_begin = metrics[0]["timestamp"] + 60*1000*5
 
     blocks = {}
-    for m in [m for m in metrics if m["event"] in ["broadcastBlock", "newBlock"]]:
+    for m in metrics:
+        if m["event"] not in ["broadcastBlock", "newBlock"]: continue
+
         hash = m["hash"]
         if hash not in blocks:
             blocks[hash] = []
@@ -235,6 +278,7 @@ def block_propagation(metrics):
 
     propagation_times = {}
     for hash, ls in blocks.items():
+        numbers = set()
         visited = set([])  # Only count the first time a node receives a block.
         start_time = ls[0]["timestamp"]
         if not (cutoff_time_begin < start_time < cutoff_time_end): continue
@@ -245,14 +289,17 @@ def block_propagation(metrics):
         # times is a list of (elapsedTime, node).
         # for each node, how long did it take to receive the block.
         times = [(0, ls[0]["nodeID"])]
+        visited.add(ls[0]["nodeID"])
         ls = [m for m in ls if m["event"] == "newBlock"]
         for m in ls:
             node = m["nodeID"]
             if node in visited: continue
             visited.add(node)
+            numbers.add(m["number"])
+            if len(numbers) > 1: print("Repeated block with hash %s" % hash)
 
             elapsed = m["timestamp"] - start_time
-            #if elapsed > 5000: print(m["nodeID"], elapsed)
+            if elapsed > 5000: print(m["hash"], elapsed)
             times.append((elapsed, node))
 
         propagation_times[(hash,start_time)] = times
