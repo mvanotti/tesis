@@ -145,14 +145,14 @@ def pick_random_topo(countries, latencies, amount):
     i = 0
     for i in range(len(nodes)):
         node1 = nodes[i]
-        h1 = "%d-%s" % (i, node1)
+        h1 = "%d_%s" % (i, node1)
         if h1 not in topo: topo[h1] = []
         if not node1 in latencies:
             print("Error! Node1 %s not recognized!" % node1)
             exit(1)
         for j in range(i + 1, len(nodes)):
             node2 = nodes[j]
-            h2 = "%d-%s" % (j, node2)
+            h2 = "%d_%s" % (j, node2)
             if not node2 in latencies:
                 print("Error! Node2 %s not recognized!" % node2)
                 exit(1)
