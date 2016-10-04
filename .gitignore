@@ -3,4 +3,5 @@
 configGen/logsconfigs/log4j*
 configGen/configs/*.conf*
 configGen/configs/*.dot*
+configGen/nodeids/*.json
 *.pyc
