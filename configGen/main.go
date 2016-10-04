@@ -158,13 +158,14 @@ func addMiners(nodes []node, miners int) {
 // addPeers adds a random number of peers (between minPeers and maxPeers) to each node.
 func addPeers(nodes []node, minPeers int, maxPeers int) {
 	for i := 1; i < len(nodes); i++ {
-		log.Printf("node %d: connected to graph.", i)
 		addToGraph(i, nodes, maxPeers)
+		log.Printf("node %d: connected to graph.", i)
 	}
 	// So far we have a connected graph, try to connect each node randomly to up to minPeers without violating maxPeers.
 	for i := 1; i < len(nodes); i++ {
 		log.Printf("node %d: adding peers.", i)
 		addPeersToNode(i, nodes, minPeers, maxPeers)
+		log.Printf("node %d: added peers. %d", i, len(nodes[i].Peers))
 	}
 }
 
@@ -198,7 +199,6 @@ func addPeersToNode(n int, nodes []node, minPeers, maxPeers int) {
 		log.Printf("node %d: adding peer %d", n, k)
 		nodes[n].Peers = append(nodes[n].Peers, k)
 		nodes[k].Peers = append(nodes[k].Peers, n)
-		break
 	}
 }
 
