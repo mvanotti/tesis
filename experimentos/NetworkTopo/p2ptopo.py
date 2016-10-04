@@ -3,13 +3,15 @@ from mininet.topo import Topo
 import random
 import re
 
+def fix_mac(mac): return ':'.join([x if len(x) == 2 else "0"+x for x in mac.split(':')])
+
 class P2P(Topo):
     def randByte(self):
         return hex(random.randint(0, 255))[2:]
 
     def makeMAC(self, i):
-        return self.randByte() + ":" + self.randByte() + ":" + \
-               self.randByte() + ":00:00:" + hex(i)[2:]
+        return fix_mac("22:" + self.randByte() + ":" + \
+               self.randByte() + ":00:00:" + hex(i)[2:])
 
     def makeDPID(self, i):
         a = self.makeMAC(i)
@@ -21,22 +23,22 @@ class P2P(Topo):
         for h in self.hosts():
             res[h.ip] = h
 
-    def __init__(self, nodesInfo, p2pconns,  **opts):
+    def build(self, nodesInfo, p2pconns, **opts):
         # conns is a dictionary, whose keys are the hosts and values is a list of tuples (h2, latency).
-        Topo.__init__(self, **opts)
-
+        # p2pconns is a set containing all the connections in string format "ip" -> "ip". If None, it will be ignored (all pairs will be connected.
+        #Topo.__init__(self, **opts)
         s = 1
         i = 0
-        bw = 10
+        bw = 1000
 
         hosts = {}
         switches = {}
         for host in sorted(nodesInfo.keys()):
-            i+=1
-            h = self.addHost("h-%s" % host, mac=self.makeMAC(i), ip=("10.0.0.%d" % i))
-            sw = self.addSwitch("s-%s" % host, dpid=self.makeDPID(s), **dict(listenPort=(13000 + s - 1)))
+            i += 1
+            h = self.addHost("h_%s" % host, mac=self.makeMAC(s), ip=("10.0.0.%d" % i))
+            sw = self.addSwitch("s_%s" % host, dpid=self.makeDPID(s), **dict(listenPort=(13000 + s - 1)))
             s += 1
-            self.addLink(h, sw, bw=bw, delay="0.1ms")
+            self.addLink(h, sw, bw=bw)
             hosts[host] = h
             switches[host] = sw
 
@@ -50,7 +52,7 @@ class P2P(Topo):
                 ip2 = self.nodeInfo(h2)["ip"]
 
                 key, keyrev = ('"%s" -> "%s"' % (ip1, ip2), '"%s" -> "%s"' % (ip2, ip1))
-                if key not in p2pconns and keyrev not in p2pconns: continue
+                if not p2pconns is None and key not in p2pconns and keyrev not in p2pconns: continue
 
                 lat, jitter, loss = info
                 print("%s <-> %s (%.2fms)" % (host1, host2, lat))
