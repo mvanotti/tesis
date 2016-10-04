@@ -20,8 +20,6 @@ def calculateTimeDifferences(host_metrics):
         deltaTimeNanos  = host_metrics[i+1]["nano"] - host_metrics[i]["nano"]
 
         deltasDifference = abs(deltaTimeMillis - deltaTimeNanos/1000000.0)
-        if deltasDifference > 100000:
-           print(deltasDifference, host_metrics[i], host_metrics[i+1])
         deltas.append(deltasDifference)
     if len(deltas) < 2:
         print("No Data")
@@ -37,7 +35,6 @@ def calculateTimeDifferencesAllHosts(metrics):
 
     for h in sorted(hostsMetrics.keys()):
         calculateTimeDifferences(hostsMetrics[h])
-    return None
 
 def metricsByHost(metrics):
     """metricsByHost will split the metrics for each different host. """
@@ -66,6 +63,13 @@ def propagation_statistics(nodes, prop_times):
         percentages[95].append(proptimes[3])
         percentages[100].append(proptimes[4])
 
+    # Remove outliers.
+    for p, ls in percentages.items():
+        elems_to_remove = int(len(ls) * 0.005) # Remove the .1% of outliers
+        if len(ls) < elems_to_remove: continue
+        for x in range(elems_to_remove):
+            ls.remove(max(ls))
+
     return percentages, unreceived
 
 
@@ -85,8 +89,13 @@ def propagation_histogram(prop_times, filePrefix, dstPath="/tmp/"):
         data += [min(t[0], 10000.0) for t in times]
         # the histogram of the data
 
-    cutoff_time = max(data)
-    n, bins, patches = plt.hist(data, bins=range(0, cutoff_time, 50), facecolor='g', alpha=0.75, weights=100*(np.zeros_like(data) + 1. / len(data)), cumulative=True)
+    # Discard 1% of outliers.
+    elems_to_remove = int(len(data) * 0.005)
+    for x in range(elems_to_remove):
+        data.remove(max(data))
+
+    cutoff_time = int(max(data))
+    n, bins, patches = plt.hist(data, bins=range(0, cutoff_time, 10), facecolor='g', alpha=0.75, weights=100*(np.zeros_like(data) + 1. / len(data)), cumulative=True)
     plt.axis([0, cutoff_time, 0, 100])
 
     plt.xlabel('Seconds')
@@ -95,7 +104,7 @@ def propagation_histogram(prop_times, filePrefix, dstPath="/tmp/"):
     plt.grid(True)
     plt.savefig(filename=cumulative_filename)
     plt.clf()
-    n, bins, patches = plt.hist(data, bins=range(0, cutoff_time, 50), facecolor='g', alpha=0.75, weights=100*(np.zeros_like(data) + 1. / len(data)), cumulative=False)
+    n, bins, patches = plt.hist(data, bins=range(0, cutoff_time, 10), facecolor='g', alpha=0.75, weights=100*(np.zeros_like(data) + 1. / len(data)), cumulative=False)
     plt.axis([0, cutoff_time, 0, 16])
     plt.xlabel('Seconds')
     plt.ylabel('%% of %s Received' % filePrefix)
@@ -163,6 +172,7 @@ def generation_graph(metrics, filePrefix, dstPath="/tmp/"):
     block_times = block_times[1:]
     plt.clf()
     plt.hist(block_times, bins = range(0, 70000, 1500), facecolor='b', alpha=0.75, cumulative=False)
+    plt.ylim(0, 600)
     #plt.bar(range(1, 101), block_times)
     plt.xlabel("Generation time (milliseconds)")
     plt.ylabel("Amount of %s generated in that time" % filePrefix)
@@ -244,7 +254,6 @@ def generation_graph(metrics, filePrefix, dstPath="/tmp/"):
     par1.set_ylabel("Difficulty / 10000")
     par1.get_xaxis().get_major_formatter().set_scientific(False)
     par1.get_xaxis().get_major_formatter().set_useOffset(False)
-    print(ydiffs[-10:])
 
     par1.plot(xdiffs, ydiffs, '-', color="green", linewidth=2.0)
 
@@ -253,7 +262,11 @@ def generation_graph(metrics, filePrefix, dstPath="/tmp/"):
     red_patch = mpatches.Patch(color='red', label='Target Duration')
     plt.legend(handles=[red_patch, blue_patch, green_patch])
 
-    plt.savefig(filename=path.join(dstPath, "%s-generation-diff.png" % filePrefix), format="png")
+    plt.savefig(filename=path.join(dstPath, "%s-generation-diff.png" % filePrefix), format="png", bbox_inches='tight')
+    plt.clf()
+    fig.clear()
+    plt.close()
+    plt.clf()
     return
 
 def block_propagation_by_time(prop_times):
@@ -299,7 +312,7 @@ def block_propagation(metrics):
             if len(numbers) > 1: print("Repeated block with hash %s" % hash)
 
             elapsed = m["timestamp"] - start_time
-            if elapsed > 5000: print(m["hash"], elapsed)
+            #if elapsed > 5000: print(m["hash"], elapsed)
             times.append((elapsed, node))
 
         propagation_times[(hash,start_time)] = times
