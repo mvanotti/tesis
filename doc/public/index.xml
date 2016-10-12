@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>My New Hugo Site</title>
+    <link>http://replace-this-with-your-hugo-site.com/index.xml</link>
+    <description>Recent content on My New Hugo Site</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Wed, 12 Oct 2016 14:23:59 -0300</lastBuildDate>
+    <atom:link href="http://replace-this-with-your-hugo-site.com/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>Correr test en Maxinet</title>
+      <link>http://replace-this-with-your-hugo-site.com/blog/bench/</link>
+      <pubDate>Wed, 12 Oct 2016 14:23:59 -0300</pubDate>
+      
+      <guid>http://replace-this-with-your-hugo-site.com/blog/bench/</guid>
+      <description>
+
+&lt;p&gt;Una lista casi completa de los comandos necesarios para correr los tests en Maxinet&lt;/p&gt;
+
+&lt;h1 id=&#34;compilar&#34;&gt;Compilar&lt;/h1&gt;
+
+&lt;p&gt;Hay que compilar y subir el binario a la carpeta de rsk en &lt;code&gt;maxinet@maxihead&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;scp binary.jar maxihead@maxinet:rsk&lt;/code&gt;&lt;/p&gt;
+
+&lt;h1 id=&#34;topología&#34;&gt;Topología&lt;/h1&gt;
+
+&lt;p&gt;En la creación de la topología se usan los archivos &lt;code&gt;networktopo&lt;/code&gt; y &lt;code&gt;main.go&lt;/code&gt; (y hay uno para los logs)&lt;/p&gt;
+
+&lt;p&gt;Una topología con la configuración para 30 máquinas se puede crear con los comandos&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;python networktopo.py --n=30&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;go run main.go -n 30 -m 12 -minP 5 -maxP 10 -txs 0&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;Para copiar los archivos al server usamos &lt;code&gt;rsync&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;rsync -ua NetworkTopo maxinet@maxihead:rsk&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;rsync -ua configs maxinet@maxihead:rsk&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;rsync -ua logsconfigs maxinet@maxihead:rsk&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;Ya estamos listos para hacer &lt;code&gt;ssh&lt;/code&gt; al server&lt;/p&gt;
+
+&lt;h1 id=&#34;en-maxihead&#34;&gt;En maxihead&lt;/h1&gt;
+
+&lt;p&gt;Primero chequeamos que todo esté en orden con &lt;code&gt;ibstat&lt;/code&gt;. Si las cosas están en orden seguimos. En caso de problemas difícilmente se arreglen de forma remota.&lt;/p&gt;
+
+&lt;p&gt;Luego seguramente vamos a querer attacharnos a &lt;code&gt;tmux&lt;/code&gt; con &lt;code&gt;tmux a&lt;/code&gt;. Los comandos más usados de &lt;code&gt;tmux&lt;/code&gt; seguramente sean &lt;code&gt;ctrl+b w&lt;/code&gt;, &lt;code&gt;ctrl+b c&lt;/code&gt; y &lt;code&gt;ctrl+b d&lt;/code&gt;. Consultar internet por más cosas.&lt;/p&gt;
+
+&lt;p&gt;Estando ahí recordamos que los nodos están en &lt;code&gt;host-file&lt;/code&gt; que se usa en el alias &lt;code&gt;pssh&lt;/code&gt; para hacer parrallel ssh a todas las pcs y así ejecutar un comando en todos los nodos a la vez.&lt;/p&gt;
+
+&lt;p&gt;Por ejemplo chequeamos un estado básico con&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;pssh -i uptime&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;Estando en maxihead puede que querramos &lt;strong&gt;matar todo&lt;/strong&gt;, &lt;strong&gt;levantar datos viejos&lt;/strong&gt; o &lt;strong&gt;correr nuevo experimento&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;h1 id=&#34;kill-all&#34;&gt;Kill all&lt;/h1&gt;
+
+&lt;p&gt;Para matar los workers y limpiar Mininet está el script &lt;code&gt;~/bin/stopmaxinetworker.sh&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;pssh -i ~/bin/stopmaxinetworker&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;pssh -i ~/bin/resetmininet.sh&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;El controller y el frontend se matan con ctrl+c en la ventana correspondiente.&lt;/p&gt;
+
+&lt;p&gt;Si es necesario matar las instancias de rsk es un simple &lt;code&gt;killall&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;pssh -i sudo killall java&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;Limpiamos los logs viejos (por ahí podemos querer bajarlos antes)&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;pssh -i ~/bin/cleanlogs.sh&lt;/code&gt;&lt;/p&gt;
+
+&lt;h1 id=&#34;correr-experimentos&#34;&gt;Correr experimentos&lt;/h1&gt;
+
+&lt;p&gt;En una terminal de &lt;code&gt;tmux&lt;/code&gt; levantamos el frontend&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;MaxiNetFrontendServer&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;En otra levantamos el controller&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;java -jar floodlight.jar -cf floodlightdefault.properties&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;Y en otra más levantamos los workers&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;pssh -i ~/bin/maxinetworker.sh&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;Corremos el experimento&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;python maxinet-rsk.py&lt;/code&gt;&lt;/p&gt;
+
+&lt;h1 id=&#34;bajar-data&#34;&gt;Bajar data&lt;/h1&gt;
+
+&lt;p&gt;En maxihead simplemente corremos&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;download.sh&lt;/code&gt;&lt;/p&gt;
+
+&lt;h1 id=&#34;extras&#34;&gt;Extras&lt;/h1&gt;
+
+&lt;p&gt;Para conectarnos a un nodos&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;ssh nodo&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;Chequear que se esté minando o lo que sea&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;pssh -i tail /usr/tmp/&amp;lt;num&amp;gt;*log&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;Generar gráfico&lt;/p&gt;
+
+&lt;p&gt;dot -Tpng connectivity.dot connectivity.png&lt;/p&gt;
+</description>
+    </item>
+    
+  </channel>
+</rss>

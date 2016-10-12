@@ -1,0 +1,10 @@
+title = "Doc"
+languageCode = "en-us"
+baseurl = "http://localhost/"
+canonifyurls = true
+pygmentsuseclasses = true
+Theme = "bootie-docs"
+
+[params]
+  description = "Doc general para Maxinet y eventualmente otros"
+  highlightStyle = "dracula"

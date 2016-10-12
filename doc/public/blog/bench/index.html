@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link rel="alternate" href="http://replace-this-with-your-hugo-site.com/index.xml" type="application/rss+xml" title="My New Hugo Site">
+		<link rel="icon" href="http://replace-this-with-your-hugo-site.com//favicon.ico">
+		<title>Correr test en Maxinet - My New Hugo Site</title>
+		
+		<link rel="stylesheet" href="http://replace-this-with-your-hugo-site.com//css/highlight/default.css">
+		<link rel="stylesheet" href="http://replace-this-with-your-hugo-site.com//css/bootstrap.min.css">
+		<link rel="stylesheet" href="http://replace-this-with-your-hugo-site.com//css/bootstrap-theme.min.css">
+		<link rel="stylesheet" href="http://replace-this-with-your-hugo-site.com//css/theme.css">
+		<link rel="stylesheet" href="http://replace-this-with-your-hugo-site.com//css/bootie-docs.css">
+	</head>
+
+<body role="document">
+
+	
+	<nav class="navbar navbar-inverse navbar-fixed-top">
+		<div class="container">
+			<div class="navbar-header">
+				<button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+					<span class="sr-only">Toggle navigation</span>
+					<span class="icon-bar"></span>
+					<span class="icon-bar"></span>
+					<span class="icon-bar"></span>
+				</button>
+				<a class="navbar-brand" href="http://replace-this-with-your-hugo-site.com//">My New Hugo Site</a>
+			</div>
+			<div id="navbar" class="navbar-collapse collapse">
+				<ul class="nav navbar-nav">
+					<li ><a href="http://replace-this-with-your-hugo-site.com//">Home</a></li>
+			
+				
+					<li class="dropdown">
+						<a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Categories<span class="caret"></span></a>
+						<ul class="dropdown-menu" role="menu">
+						
+						</ul>
+					</li>
+				
+				</ul>
+				
+			</div>
+		</div>
+	</nav>
+
+<div class="container">
+
+
+<div class="row">
+	<div class="col-sm-8 doc-main">
+		<main role="main">
+			<article>
+				<a id="title"></a>
+				<h1 class="doc-entry-title">Correr test en Maxinet</h1>
+				<div class="doc-entry-meta">
+					<span><time datetime="2016-10-12">October 12, 2016</time></span>
+				</div>
+				<section>
+					
+
+<p>Una lista casi completa de los comandos necesarios para correr los tests en Maxinet</p>
+
+<h1 id="compilar">Compilar</h1>
+
+<p>Hay que compilar y subir el binario a la carpeta de rsk en <code>maxinet@maxihead</code></p>
+
+<p><code>scp binary.jar maxihead@maxinet:rsk</code></p>
+
+<h1 id="topología">Topología</h1>
+
+<p>En la creación de la topología se usan los archivos <code>networktopo</code> y <code>main.go</code> (y hay uno para los logs)</p>
+
+<p>Una topología con la configuración para 30 máquinas se puede crear con los comandos</p>
+
+<p><code>python networktopo.py --n=30</code></p>
+
+<p><code>go run main.go -n 30 -m 12 -minP 5 -maxP 10 -txs 0</code></p>
+
+<p>Para copiar los archivos al server usamos <code>rsync</code></p>
+
+<p><code>rsync -ua NetworkTopo maxinet@maxihead:rsk</code></p>
+
+<p><code>rsync -ua configs maxinet@maxihead:rsk</code></p>
+
+<p><code>rsync -ua logsconfigs maxinet@maxihead:rsk</code></p>
+
+<p>Ya estamos listos para hacer <code>ssh</code> al server</p>
+
+<h1 id="en-maxihead">En maxihead</h1>
+
+<p>Primero chequeamos que todo esté en orden con <code>ibstat</code>. Si las cosas están en orden seguimos. En caso de problemas difícilmente se arreglen de forma remota.</p>
+
+<p>Luego seguramente vamos a querer attacharnos a <code>tmux</code> con <code>tmux a</code>. Los comandos más usados de <code>tmux</code> seguramente sean <code>ctrl+b w</code>, <code>ctrl+b c</code> y <code>ctrl+b d</code>. Consultar internet por más cosas.</p>
+
+<p>Estando ahí recordamos que los nodos están en <code>host-file</code> que se usa en el alias <code>pssh</code> para hacer parrallel ssh a todas las pcs y así ejecutar un comando en todos los nodos a la vez.</p>
+
+<p>Por ejemplo chequeamos un estado básico con</p>
+
+<p><code>pssh -i uptime</code></p>
+
+<p>Estando en maxihead puede que querramos <strong>matar todo</strong>, <strong>levantar datos viejos</strong> o <strong>correr nuevo experimento</strong>.</p>
+
+<h1 id="kill-all">Kill all</h1>
+
+<p>Para matar los workers y limpiar Mininet está el script <code>~/bin/stopmaxinetworker.sh</code></p>
+
+<p><code>pssh -i ~/bin/stopmaxinetworker</code></p>
+
+<p><code>pssh -i ~/bin/resetmininet.sh</code></p>
+
+<p>El controller y el frontend se matan con ctrl+c en la ventana correspondiente.</p>
+
+<p>Si es necesario matar las instancias de rsk es un simple <code>killall</code></p>
+
+<p><code>pssh -i sudo killall java</code></p>
+
+<p>Limpiamos los logs viejos (por ahí podemos querer bajarlos antes)</p>
+
+<p><code>pssh -i ~/bin/cleanlogs.sh</code></p>
+
+<h1 id="correr-experimentos">Correr experimentos</h1>
+
+<p>En una terminal de <code>tmux</code> levantamos el frontend</p>
+
+<p><code>MaxiNetFrontendServer</code></p>
+
+<p>En otra levantamos el controller</p>
+
+<p><code>java -jar floodlight.jar -cf floodlightdefault.properties</code></p>
+
+<p>Y en otra más levantamos los workers</p>
+
+<p><code>pssh -i ~/bin/maxinetworker.sh</code></p>
+
+<p>Corremos el experimento</p>
+
+<p><code>python maxinet-rsk.py</code></p>
+
+<h1 id="bajar-data">Bajar data</h1>
+
+<p>En maxihead simplemente corremos</p>
+
+<p><code>download.sh</code></p>
+
+<h1 id="extras">Extras</h1>
+
+<p>Para conectarnos a un nodos</p>
+
+<p><code>ssh nodo</code></p>
+
+<p>Chequear que se esté minando o lo que sea</p>
+
+<p><code>pssh -i tail /usr/tmp/&lt;num&gt;*log</code></p>
+
+<p>Generar gráfico</p>
+
+<p>dot -Tpng connectivity.dot connectivity.png</p>
+
+				</section>
+			</article>
+		</main>
+	</div> 
+
+	
+
+<div class="col-sm-3 col-sm-offset-1 doc-sidebar">
+	<div id="sidebar">
+	<div class="sidebar-module">
+		<div class="sidebar-toc">
+			<h4 class="sidebar-heading">Table of Contents</h4>
+			<ul>
+				<li><strong><a href="#title">Correr test en Maxinet</a></strong></li>
+			</ul>
+			<nav id="TableOfContents">
+<ul>
+<li><a href="#compilar">Compilar</a></li>
+<li><a href="#topología">Topología</a></li>
+<li><a href="#en-maxihead">En maxihead</a></li>
+<li><a href="#kill-all">Kill all</a></li>
+<li><a href="#correr-experimentos">Correr experimentos</a></li>
+<li><a href="#bajar-data">Bajar data</a></li>
+<li><a href="#extras">Extras</a></li>
+</ul>
+</nav>
+		</div>
+	</div>
+	<div class="sidebar-module">
+		<h4 class="sidebar-heading">Pages in Categories</h4>
+		<ul class="sidebar-category-list">
+		
+		</ul>
+	</div>
+	<div class="sidebar-module">
+		<h4 class="sidebar-heading">Tags</h4>
+		<div class="tag-box">
+		
+		</div>
+	</div>
+	</div>
+</div>
+
+</div> 
+
+
+<hr />
+
+<div class="row">
+	<div class="col-sm-8">
+		<p class="doc-footer-em"><a href="#" onclick="resetSidebarPos()">Back to TOP</a></p>
+	</div>
+</div>
+
+</div> 
+
+<footer class="doc-footer">
+	
+	
+	<p>Powered by <strong><a href="https://github.com/key-amb/hugo-theme-bootie-docs">Bootie Docs</a></strong> - theme for <a href="http://gohugo.io/">Hugo</a> by <a href="https://github.com/key-amb/">key-amb</a>.</p>
+</footer>
+
+
+
+<script src="http://replace-this-with-your-hugo-site.com//js/jquery.min.js"></script>
+<script src="http://replace-this-with-your-hugo-site.com//js/bootstrap.min.js"></script>
+
+<script src="http://replace-this-with-your-hugo-site.com//js/highlight.pack.js"></script>
+<script>hljs.initHighlightingOnLoad();</script>
+<script src="http://replace-this-with-your-hugo-site.com//js/ie10-viewport-bug-workaround.js"></script>
+<script src="http://replace-this-with-your-hugo-site.com//js/bootie-docs.js"></script>
+
+</body>
+</html>
