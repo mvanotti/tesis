@@ -142,3 +142,9 @@ Generar gráfico
 $dot -Tpng connectivity.dot connectivity.png
 ~~~~
 
+Generar los gráficos de métricas. Hay que juntar los logs en un archivo común, llamado consumado en este caso.
+
+~~~~
+$python3 main.py < consumado
+~~~~
+
