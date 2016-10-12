@@ -1,5 +1,7 @@
 from statistics import mean, median, stdev, variance
 import numpy as np
+import matplotlib
+matplotlib.use('cairo')
 import matplotlib.pyplot as plt
 from os import path
 
