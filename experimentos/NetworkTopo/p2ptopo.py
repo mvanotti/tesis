@@ -23,10 +23,15 @@ class P2P(Topo):
         for h in self.hosts():
             res[h.ip] = h
 
+    def get_dpid(self, switch):
+        return self.switch_to_dpid[switch]
+
     def build(self, nodesInfo, p2pconns, **opts):
         # conns is a dictionary, whose keys are the hosts and values is a list of tuples (h2, latency).
         # p2pconns is a set containing all the connections in string format "ip" -> "ip". If None, it will be ignored (all pairs will be connected.
         #Topo.__init__(self, **opts)
+        self.switch_to_dpid = {}
+
         s = 1
         i = 0
         bw = 1000
@@ -36,7 +41,9 @@ class P2P(Topo):
         for host in sorted(nodesInfo.keys()):
             i += 1
             h = self.addHost("h_%s" % host, mac=self.makeMAC(s), ip=("10.0.0.%d" % i))
-            sw = self.addSwitch("s_%s" % host, dpid=self.makeDPID(s), **dict(listenPort=(13000 + s - 1)))
+            self.switch_to_dpid["s_%s" % host] = self.makeDPID(s)
+            print("s_%s: %s" % (host, self.get_dpid("s_%s" % host)))
+            sw = self.addSwitch("s_%s" % host, dpid=self.switch_to_dpid["s_%s" % host], **dict(listenPort=(13000 + s - 1)))
             s += 1
             self.addLink(h, sw, bw=bw)
             hosts[host] = h

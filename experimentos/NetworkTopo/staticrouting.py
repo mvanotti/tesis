@@ -47,8 +47,10 @@ def create_static_routing(net, topo, cinfo):
         if not switch.connected(): print("Not connected! %s" % s)
         pn = topo.port(s, h)
 
+        dpid = topo.get_dpid(s)
+
         request = {
-                    "switch": convert_dpid(switch.dpid),
+                    "switch": convert_dpid(dpid),
                     "name": "flow-%s-%s" % (s, h),
                     "cookie": "0",
                     "active": "true",
@@ -66,11 +68,9 @@ def create_static_routing(net, topo, cinfo):
         host1, host2 = net.get(h1), net.get(h2)
 
         pn = topo.port(s1, s2)
-        ph1 = topo.port(s1, h1)
-        ph2 = topo.port(s2, h2)
 
         request = {
-            "switch": convert_dpid(switch1.dpid),
+            "switch": convert_dpid(topo.get_dpid(s1)),
             "name": "flow-%s-%s" % (s1, s2),
             "cookie": "0",
             "active": "true",
@@ -80,7 +80,7 @@ def create_static_routing(net, topo, cinfo):
         send_request(controller_url, request)
 
         request = {
-            "switch": convert_dpid(switch2.dpid),
+            "switch": convert_dpid(topo.get_dpid(s2)),
             "name": "flow-%s-%s" % (s2, s1),
             "cookie": "0",
             "active": "true",
