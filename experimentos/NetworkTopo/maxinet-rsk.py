@@ -1,5 +1,5 @@
 from time import sleep
-from expconfig import parse_connectivity
+from expconfig import parse_connectivity, create_connectivity_dict
 from p2ptopo import P2P
 
 from MaxiNet.Frontend import maxinet
@@ -13,17 +13,6 @@ import random
 import pickle
 
 ip2host = {}
-
-def create_connectivity_dict(conns):
-    res = {}
-    for conn in conns:
-        ls = conn.split("->")
-        a = ls[0].strip().replace("\"", "")
-        b = ls[1].strip().replace("\"", "")
-        if a not in res:
-            res[a] = set()
-        res[a].add(b)
-    return res
 
 def listen_everyone(hosts, conns):
     for h in hosts:
