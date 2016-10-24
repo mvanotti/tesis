@@ -87,6 +87,23 @@ metricsParser = {
     "newBlockHash": parseNewBlockHash,
 }
 
+def parseSimgridMetric(line):
+    # Example (simgrid): [3_US:MessageHandler:(5) 35778.732184] [jmsg/INFO] at: 35778732 nano: 0 | event: newBlock hash: d3e298 number: 3344 parent: 6dd796 sender: 1_CN
+    metric = line.strip().split(' ')
+    if len(metric) < 12: return None
+    nodeID = metric[0].split(':')[0][1:]
+    timestamp = metric[4]
+    nano = 0
+    event = metric[9]
+
+    if event not in metricsParser: return None
+
+    metric = metricsParser[event](metric[8:])
+    metric["nodeID"] = nodeID
+    metric["timestamp"] = int(timestamp)
+    metric["nano"] = int(nano)
+    return metric
+
 def parseMetric(line):
     # Example: 17:52:05.322 INFO [metrics]  950a92 at: 1468270325320 nano: 36267820527878 | event: broadcastBlock hash: 6acea6 number: 1 parent: a7f584
     metric = line.strip().split(' ')

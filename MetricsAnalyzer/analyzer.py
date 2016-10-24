@@ -97,7 +97,7 @@ def propagation_histogram(prop_times, filePrefix, dstPath="/tmp/"):
         data.remove(max(data))
 
     cutoff_time = int(max(data))
-    n, bins, patches = plt.hist(data, bins=range(0, cutoff_time, 10), facecolor='g', alpha=0.75, weights=100*(np.zeros_like(data) + 1. / len(data)), cumulative=True)
+    n, bins, patches = plt.hist(data, bins=range(0, cutoff_time, 250), facecolor='g', alpha=0.75, weights=100*(np.zeros_like(data) + 1. / len(data)), cumulative=True)
     plt.axis([0, cutoff_time, 0, 100])
 
     plt.xlabel('Seconds')
@@ -106,7 +106,7 @@ def propagation_histogram(prop_times, filePrefix, dstPath="/tmp/"):
     plt.grid(True)
     plt.savefig(filename=cumulative_filename)
     plt.clf()
-    n, bins, patches = plt.hist(data, bins=range(0, cutoff_time, 10), facecolor='g', alpha=0.75, weights=100*(np.zeros_like(data) + 1. / len(data)), cumulative=False)
+    n, bins, patches = plt.hist(data, bins=range(0, cutoff_time, 250), facecolor='g', alpha=0.75, weights=100*(np.zeros_like(data) + 1. / len(data)), cumulative=False)
     plt.axis([0, cutoff_time, 0, 16])
     plt.xlabel('Seconds')
     plt.ylabel('%% of %s Received' % filePrefix)

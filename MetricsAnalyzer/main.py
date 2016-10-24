@@ -1,5 +1,5 @@
 from sys import stdin
-from parser import parseMetric
+from parser import parseMetric, parseSimgridMetric
 from analyzer import calculateTimeDifferencesAllHosts
 from analyzer import block_propagation, transaction_propagation
 from analyzer import propagation_histogram, generation_graph, propagation_statistics, repeated_blocks_graph
@@ -58,7 +58,7 @@ def main():
     metrics = []
     nodes = set([])
     for line in stdin:
-        metric = parseMetric(line)
+        metric = parseSimgridMetric(line)
         if metric is None: continue
         metrics.append(metric)
         nodes.add(metric["nodeID"])
