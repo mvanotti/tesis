@@ -1,4 +1,5 @@
 import pickle
+import random
 
 def parse_connectivity(file):
     with open(file, "r") as f:
@@ -19,7 +20,7 @@ def create_connectivity_dict(conns):
         res[a].add(b)
     return res
 
-def create_simgrid_files(hostsInfo, nodesInfo):
+def create_simgrid_files(hostsInfo, nodesInfo, miningShareDict):
     # nodesInfo has, for each node in the system, its peers.
     # hostsInfo has, for each host in the network, it's latency to the rest of the hosts.
 
@@ -87,6 +88,8 @@ def create_simgrid_files(hostsInfo, nodesInfo):
     for h in hostsInfo.keys():
         xml_process = ['\t<process host="%s" function="io.rootstock.simgrid.RSKNode">' % h]
         n = host2node[h]
+        # First Parameter: mining share of that host. if 0, then it's not a miner.
+        xml_process.append('\t\t<argument value="%f" />' % miningShareDict[host2node[h]])
         for np in nodesInfo[n]:
             p = node2host[np]
             xml_process.append('\t\t<argument value="%s" />' % p)
@@ -106,8 +109,15 @@ if __name__ == "__main__":
 
     p2pconns = create_connectivity_dict(parse_connectivity("connectivity.dot"))
 
-    print(len(conns), len(p2pconns))
-    platform, deployment = create_simgrid_files(conns, p2pconns)
+    miningShareDict = {}
+    for node in p2pconns.keys():
+        miningShareDict[node] = float('NaN')
+
+    miners = 10
+    for node in random.sample(p2pconns, miners):
+        miningShareDict[node] = 1.0/miners
+
+    platform, deployment = create_simgrid_files(conns, p2pconns, miningShareDict)
 
     with open("/tmp/deployment.xml", "w") as f:
         f.write(deployment)
